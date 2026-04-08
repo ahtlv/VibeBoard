@@ -1,1 +1,11 @@
-// Shared API: authApi, boardsApi, tasksApi, workspacesApi, analyticsApi, billingApi
+export { apiClient, setTokenAccessor, ApiError, NetworkError } from './client'
+export { authApi } from './authApi'
+export type { LoginRequest, RegisterRequest, LoginResponse, RegisterResponse, AuthTokens } from './authApi'
+export { boardsApi } from './boardsApi'
+export type { CreateBoardRequest, CreateColumnRequest, BoardSummary } from './boardsApi'
+export { tasksApi } from './tasksApi'
+export type { CreateTaskRequest, UpdateTaskRequest, MoveTaskRequest } from './tasksApi'
+export { analyticsApi } from './analyticsApi'
+export type { AnalyticsOverview, ProductivityStats, DailyProductivity, ProductivityStatsParams } from './analyticsApi'
+export { billingApi } from './billingApi'
+export type { CreateCheckoutSessionRequest, CheckoutSession, BillingPortalSession } from './billingApi'

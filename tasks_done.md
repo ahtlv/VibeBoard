@@ -422,7 +422,7 @@
 
 ---
 
-## 21. Создать страницу Calendar
+## 21. Создать страницу Calendar (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -443,7 +443,7 @@
 
 ---
 
-## 22. Создать страницу Analytics
+## 22. Создать страницу Analytics (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -464,7 +464,7 @@
 
 ---
 
-## 23. Создать страницу Settings
+## 23. Создать страницу Settings (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -485,7 +485,7 @@
 
 ---
 
-## 24. Создать страницу Billing
+## 24. Создать страницу Billing (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -506,7 +506,7 @@
 
 ---
 
-## 25. Создать страницу Workspace
+## 25. Создать страницу Workspace (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -527,7 +527,7 @@
 
 ---
 
-## 26. Создать API-клиент frontend
+## 26. Создать API-клиент frontend (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (TypeScript)
@@ -548,7 +548,7 @@
 
 ---
 
-## 27. Создать authApi на frontend
+## 27. Создать authApi на frontend (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (TypeScript)
@@ -569,7 +569,7 @@
 
 ---
 
-## 28. Создать boardsApi на frontend
+## 28. Создать boardsApi на frontend (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (TypeScript)
@@ -590,7 +590,7 @@
 
 ---
 
-## 29. Создать tasksApi на frontend
+## 29. Создать tasksApi на frontend (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (TypeScript)
@@ -611,7 +611,7 @@
 
 ---
 
-## 30. Создать analyticsApi на frontend
+## 30. Создать analyticsApi на frontend (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (TypeScript)
@@ -632,7 +632,7 @@
 
 ---
 
-## 31. Создать billingApi на frontend
+## 31. Создать billingApi на frontend (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (TypeScript)
@@ -653,7 +653,7 @@
 
 ---
 
-## 32. Создать backend-структуру проекта
+## 32. Создать backend-структуру проекта (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -674,7 +674,7 @@
 
 ---
 
-## 33. Настроить backend-конфигурацию через env
+## 33. Настроить backend-конфигурацию через env (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -695,7 +695,7 @@
 
 ---
 
-## 34. Подключить SQLAlchemy и session factory
+## 34. Подключить SQLAlchemy и session factory (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python + PostgreSQL)
@@ -716,7 +716,7 @@
 
 ---
 
-## 35. Создать модель User
+## 35. Создать модель User (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + PostgreSQL)
@@ -737,7 +737,7 @@
 
 ---
 
-## 36. Создать модель Workspace
+## 36. Создать модель Workspace (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + PostgreSQL)
@@ -800,7 +800,7 @@
 
 ---
 
-## 39. Создать модель Column
+## 39. Создать модель Column (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + PostgreSQL)
@@ -821,7 +821,7 @@
 
 ---
 
-## 40. Создать модель Task
+## 40. Создать модель Task (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + PostgreSQL)
@@ -842,7 +842,7 @@
 
 ---
 
-## 41. Создать модель ChecklistItem
+## 41. Создать модель ChecklistItem (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + PostgreSQL)
@@ -863,7 +863,7 @@
 
 ---
 
-## 42. Создать модель TimeEntry
+## 42. Создать модель TimeEntry (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + PostgreSQL)
@@ -884,7 +884,7 @@
 
 ---
 
-## 43. Создать модель Subscription
+## 43. Создать модель Subscription (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + PostgreSQL)
@@ -905,7 +905,7 @@
 
 ---
 
-## 44. Создать Pydantic-схемы auth
+## 44. Создать Pydantic-схемы auth (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Pydantic)
@@ -926,7 +926,7 @@
 
 ---
 
-## 45. Создать Pydantic-схемы доски
+## 45. Создать Pydantic-схемы доски (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Pydantic)
@@ -947,7 +947,7 @@
 
 ---
 
-## 46. Реализовать password hashing utility
+## 46. Реализовать password hashing utility (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (Python)
@@ -968,7 +968,7 @@
 
 ---
 
-## 47. Реализовать JWT utility
+## 47. Реализовать JWT utility (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (Python)
@@ -989,7 +989,7 @@
 
 ---
 
-## 48. Создать UserRepository
+## 48. Создать UserRepository (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + Python)
@@ -1010,7 +1010,7 @@
 
 ---
 
-## 49. Реализовать AuthService.register
+## 49. Реализовать AuthService.register (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1031,7 +1031,7 @@
 
 ---
 
-## 50. Реализовать AuthService.login
+## 50. Реализовать AuthService.login (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1052,7 +1052,7 @@
 
 ---
 
-## 51. Создать auth router register
+## 51. Создать auth router register (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1073,7 +1073,7 @@
 
 ---
 
-## 52. Создать auth router login
+## 52. Создать auth router login (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1094,7 +1094,7 @@
 
 ---
 
-## 53. Реализовать dependency current user
+## 53. Реализовать dependency current user (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1115,7 +1115,7 @@
 
 ---
 
-## 54. Создать WorkspaceRepository.create
+## 54. Создать WorkspaceRepository.create (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + Python)
@@ -1136,7 +1136,7 @@
 
 ---
 
-## 55. Создать endpoint создания workspace
+## 55. Создать endpoint создания workspace (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)

@@ -18,10 +18,19 @@ interface AuthContextValue extends AuthState {
   logout: () => void
 }
 
+// TODO: заменить на реальный refresh token flow при подключении backend
 const initialState: AuthState = {
-  user: null,
-  accessToken: null,
-  status: 'idle',
+  user: {
+    id: 'mock-user-1',
+    email: 'anatoli@vibeboard.app',
+    name: 'Anatoli',
+    avatarUrl: null,
+    plan: 'pro',
+    settings: { theme: 'system', language: 'en', emailNotifications: true, desktopNotifications: false },
+    createdAt: '2026-01-01T00:00:00Z',
+  },
+  accessToken: 'mock-token',
+  status: 'authenticated',
 }
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
