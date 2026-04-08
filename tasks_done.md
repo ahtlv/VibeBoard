@@ -2,7 +2,7 @@
 
 ---
 
-## 1. Создать базовую структуру frontend-проекта
+## 1. Создать базовую структуру frontend-проекта (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -23,7 +23,7 @@
 
 ---
 
-## 2. Настроить frontend-роутинг
+## 2. Настроить frontend-роутинг (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
