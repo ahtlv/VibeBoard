@@ -1,1 +1,4 @@
-// Widgets: KanbanBoard, TaskCard, PomodoroTimer, Sidebar, etc.
+export { BoardHeader } from './BoardHeader'
+export { KanbanColumn } from './KanbanColumn'
+export { TaskCard } from './TaskCard'
+export { TaskModal } from './TaskModal'

@@ -44,7 +44,7 @@
 
 ---
 
-## 3. Создать базовую тему light/dark
+## 3. Создать базовую тему light/dark (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + Tailwind CSS)
@@ -65,7 +65,7 @@
 
 ---
 
-## 4. Создать UI-компонент AppShell
+## 4. Создать UI-компонент AppShell (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -86,7 +86,7 @@
 
 ---
 
-## 5. Описать frontend-типы пользователя и подписки
+## 5. Описать frontend-типы пользователя и подписки (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (TypeScript)
@@ -107,7 +107,7 @@
 
 ---
 
-## 6. Описать frontend-типы доски
+## 6. Описать frontend-типы доски (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (TypeScript)
@@ -128,7 +128,7 @@
 
 ---
 
-## 7. Создать страницу login
+## 7. Создать страницу login (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -170,7 +170,7 @@
 
 ---
 
-## 9. Создать frontend auth store
+## 9. Создать frontend auth store (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -191,7 +191,7 @@
 
 ---
 
-## 10. Реализовать frontend route guard
+## 10. Реализовать frontend route guard (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -212,7 +212,7 @@
 
 ---
 
-## 11. Создать onboarding-страницу
+## 11. Создать onboarding-страницу  (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -233,7 +233,7 @@
 
 ---
 
-## 12. Создать layout страницы dashboard
+## 12. Создать layout страницы dashboard (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -254,7 +254,7 @@
 
 ---
 
-## 13. Создать компонент BoardHeader
+## 13. Создать компонент BoardHeader (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -275,7 +275,7 @@
 
 ---
 
-## 14. Создать компонент KanbanColumn
+## 14. Создать компонент KanbanColumn (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -296,7 +296,7 @@
 
 ---
 
-## 15. Создать компонент TaskCard
+## 15. Создать компонент TaskCard (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -317,7 +317,7 @@
 
 ---
 
-## 16. Создать моковые данные доски
+## 16. Создать моковые данные доски (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -338,7 +338,7 @@
 
 ---
 
-## 17. Подключить drag and drop для карточек
+## 17. Подключить drag and drop для карточек (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -359,7 +359,7 @@
 
 ---
 
-## 18. Создать модальное окно задачи
+## 18. Создать модальное окно задачи (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -380,7 +380,7 @@
 
 ---
 
-## 19. Добавить чеклист в модалку задачи
+## 19. Добавить чеклист в модалку задачи (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -401,7 +401,7 @@
 
 ---
 
-## 20. Добавить UI Pomodoro-таймера в задачу
+## 20. Добавить UI Pomodoro-таймера в задачу (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)

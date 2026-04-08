@@ -1,1 +1,2 @@
-// Features: auth, create-task, drag-drop, pomodoro, subscription-gate, etc.
+export { AuthProvider, useAuth } from './auth/store'
+export type { AuthStatus } from './auth/store'
