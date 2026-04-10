@@ -1472,7 +1472,7 @@
 
 ---
 
-## 71. Подключить frontend login к authApi
+## 71. Подключить frontend login к authApi (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -1493,7 +1493,7 @@
 
 ---
 
-## 72. Подключить frontend register к authApi
+## 72. Подключить frontend register к authApi (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -1514,7 +1514,7 @@
 
 ---
 
-## 73. Подключить dashboard к boardsApi
+## 73. Подключить dashboard к boardsApi (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -1535,7 +1535,7 @@
 
 ---
 
-## 74. Подключить создание задачи к tasksApi
+## 74. Подключить создание задачи к tasksApi (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -1556,7 +1556,7 @@
 
 ---
 
-## 75. Подключить moveTask к backend
+## 75. Подключить moveTask к backend (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -1577,7 +1577,7 @@
 
 ---
 
-## 76. Подключить таймер к time entries API
+## 76. Подключить таймер к time entries API (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)

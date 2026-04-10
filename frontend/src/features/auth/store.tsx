@@ -1,4 +1,5 @@
-import { createContext, useContext, useReducer, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
+import { setTokenAccessor } from '@/shared/api/client'
 import type { User } from '@/entities/user/types'
 
 export type AuthStatus = 'idle' | 'authenticated' | 'unauthenticated'
@@ -18,19 +19,12 @@ interface AuthContextValue extends AuthState {
   logout: () => void
 }
 
-// TODO: заменить на реальный refresh token flow при подключении backend
+const TOKEN_KEY = 'vb_access_token'
+
 const initialState: AuthState = {
-  user: {
-    id: 'mock-user-1',
-    email: 'anatoli@vibeboard.app',
-    name: 'Anatoli',
-    avatarUrl: null,
-    plan: 'pro',
-    settings: { theme: 'system', language: 'en', emailNotifications: true, desktopNotifications: false },
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  accessToken: 'mock-token',
-  status: 'authenticated',
+  user: null,
+  accessToken: null,
+  status: 'idle',
 }
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
@@ -49,11 +43,26 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
+  // Регистрируем accessor токена в apiClient (без циклических зависимостей)
+  useEffect(() => {
+    setTokenAccessor(() => localStorage.getItem(TOKEN_KEY))
+  }, [])
+
+  // При маунте — если нет токена в localStorage, сразу переходим в unauthenticated.
+  // Если токен есть — переходим в unauthenticated тоже: user не загружен,
+  // /auth/me будет добавлен в refresh token flow. После login setAuth
+  // восстановит состояние с актуальным user объектом.
+  useEffect(() => {
+    dispatch({ type: 'LOGOUT' })
+  }, [])
+
   function setAuth(user: User, accessToken: string) {
+    localStorage.setItem(TOKEN_KEY, accessToken)
     dispatch({ type: 'SET_AUTH', user, accessToken })
   }
 
   function logout() {
+    localStorage.removeItem(TOKEN_KEY)
     dispatch({ type: 'LOGOUT' })
   }
 

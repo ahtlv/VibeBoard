@@ -29,26 +29,23 @@ export interface BoardSummary {
 // ── api ───────────────────────────────────────────────────────────────────────
 
 export const boardsApi = {
-  /** GET /workspaces/:workspaceId/boards — список досок workspace */
+  /** GET /boards?workspace_id= — список досок workspace */
   listBoards: (workspaceId: string): Promise<BoardSummary[]> =>
-    apiClient.get<BoardSummary[]>(`/workspaces/${workspaceId}/boards`),
+    apiClient.get<BoardSummary[]>(`/boards?workspace_id=${workspaceId}`),
 
-  /** GET /boards/:boardId — полная доска с колонками и задачами */
-  getBoard: (boardId: string): Promise<Board> =>
-    apiClient.get<Board>(`/boards/${boardId}`),
-
-  /** POST /workspaces/:workspaceId/boards — создать доску */
+  /** POST /boards — создать доску */
   createBoard: (body: CreateBoardRequest): Promise<Board> =>
-    apiClient.post<Board>(`/workspaces/${body.workspaceId}/boards`, {
+    apiClient.post<Board>('/boards', {
+      workspace_id: body.workspaceId,
       title: body.title,
       description: body.description,
     }),
 
-  /** POST /boards/:boardId/columns — добавить колонку */
+  /** POST /columns — добавить колонку */
   createColumn: (boardId: string, body: CreateColumnRequest): Promise<Column> =>
-    apiClient.post<Column>(`/boards/${boardId}/columns`, body),
+    apiClient.post<Column>('/columns', { board_id: boardId, title: body.title }),
 
-  /** DELETE /boards/:boardId — удалить доску */
+  /** DELETE /boards/:boardId — удалить доску (не реализован на backend) */
   deleteBoard: (boardId: string): Promise<void> =>
     apiClient.delete<void>(`/boards/${boardId}`),
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { Task } from '@/entities/task/types'
 import type { Priority } from '@/shared/types/task'
+import { timeEntriesApi } from '@/shared/api/timeEntriesApi'
 
 interface TaskModalProps {
   task: Task
@@ -40,14 +41,21 @@ export function TaskModal({ task, onClose }: TaskModalProps) {
   const POMODORO_SECONDS = 25 * 60
   const [timerStatus, setTimerStatus] = useState<'idle' | 'running' | 'paused'>('idle')
   const [secondsLeft, setSecondsLeft] = useState(POMODORO_SECONDS)
+  const [timerError, setTimerError] = useState<string | null>(null)
+  const [isTimerLoading, setIsTimerLoading] = useState(false)
+  const activeEntryIdRef = useRef<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  function startTimer() {
-    setTimerStatus('running')
+  function startCountdown() {
     intervalRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(intervalRef.current!)
+          // Сессия истекла — останавливаем на сервере автоматически
+          if (activeEntryIdRef.current) {
+            timeEntriesApi.stop().catch(() => {})
+            activeEntryIdRef.current = null
+          }
           setTimerStatus('idle')
           return POMODORO_SECONDS
         }
@@ -56,18 +64,49 @@ export function TaskModal({ task, onClose }: TaskModalProps) {
     }, 1000)
   }
 
+  async function startTimer() {
+    setTimerError(null)
+    setIsTimerLoading(true)
+    try {
+      const entry = await timeEntriesApi.start(task.id)
+      activeEntryIdRef.current = entry.id
+      setTimerStatus('running')
+      startCountdown()
+    } catch {
+      setTimerError('Failed to start session')
+    } finally {
+      setIsTimerLoading(false)
+    }
+  }
+
   function pauseTimer() {
+    // Пауза только в UI — сессия на сервере остаётся активной
     if (intervalRef.current) clearInterval(intervalRef.current)
     setTimerStatus('paused')
   }
 
-  function stopTimer() {
-    if (intervalRef.current) clearInterval(intervalRef.current)
-    setTimerStatus('idle')
-    setSecondsLeft(POMODORO_SECONDS)
+  function resumeTimer() {
+    setTimerStatus('running')
+    startCountdown()
   }
 
-  // Очищаем интервал при закрытии модалки
+  async function stopTimer() {
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    setTimerError(null)
+    setIsTimerLoading(true)
+    try {
+      await timeEntriesApi.stop()
+      activeEntryIdRef.current = null
+    } catch {
+      setTimerError('Failed to stop session')
+    } finally {
+      setIsTimerLoading(false)
+      setTimerStatus('idle')
+      setSecondsLeft(POMODORO_SECONDS)
+    }
+  }
+
+  // Очищаем интервал при закрытии модалки (сессия на сервере остаётся)
   useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current) }, [])
 
   function formatTime(s: number): string {
@@ -194,7 +233,7 @@ export function TaskModal({ task, onClose }: TaskModalProps) {
                 </p>
                 <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                   {timerStatus === 'running' && 'Focus session'}
-                  {timerStatus === 'paused' && 'Paused'}
+                  {timerStatus === 'paused' && 'Paused (session active on server)'}
                   {timerStatus === 'idle' && 'Ready'}
                 </p>
               </div>
@@ -204,9 +243,10 @@ export function TaskModal({ task, onClose }: TaskModalProps) {
                 {timerStatus === 'idle' && (
                   <button
                     onClick={startTimer}
-                    className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+                    disabled={isTimerLoading}
+                    className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Start
+                    {isTimerLoading ? '…' : 'Start'}
                   </button>
                 )}
                 {timerStatus === 'running' && (
@@ -219,7 +259,7 @@ export function TaskModal({ task, onClose }: TaskModalProps) {
                 )}
                 {timerStatus === 'paused' && (
                   <button
-                    onClick={startTimer}
+                    onClick={resumeTimer}
                     className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
                   >
                     Resume
@@ -228,13 +268,17 @@ export function TaskModal({ task, onClose }: TaskModalProps) {
                 {timerStatus !== 'idle' && (
                   <button
                     onClick={stopTimer}
-                    className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    disabled={isTimerLoading}
+                    className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Stop
+                    {isTimerLoading ? '…' : 'Stop'}
                   </button>
                 )}
               </div>
             </div>
+            {timerError && (
+              <p className="mt-2 text-xs text-red-500 dark:text-red-400">{timerError}</p>
+            )}
           </div>
 
           {/* Checklists */}
