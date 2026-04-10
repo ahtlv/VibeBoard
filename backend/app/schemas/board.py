@@ -35,6 +35,20 @@ class BoardSummary(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @classmethod
+    def from_orm(cls, b: object) -> "BoardSummary":
+        from app.models.board import Board as B
+        board: B = b  # type: ignore[assignment]
+        return cls(
+            id=str(board.id),
+            workspace_id=str(board.workspace_id),
+            title=board.title,
+            description=board.description,
+            is_archived=board.is_archived,
+            created_at=board.created_at,
+            updated_at=board.updated_at,
+        )
+
 
 class BoardResponse(BaseModel):
     """Полная доска с колонками и задачами."""
@@ -49,3 +63,19 @@ class BoardResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm(cls, b: object) -> "BoardResponse":
+        from app.models.board import Board as B
+        board: B = b  # type: ignore[assignment]
+        return cls(
+            id=str(board.id),
+            workspace_id=str(board.workspace_id),
+            created_by=str(board.created_by) if board.created_by else None,
+            title=board.title,
+            description=board.description,
+            is_archived=board.is_archived,
+            columns=[],
+            created_at=board.created_at,
+            updated_at=board.updated_at,
+        )

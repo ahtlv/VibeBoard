@@ -1157,7 +1157,7 @@
 
 ---
 
-## 56. Создать BoardRepository.create
+## 56. Создать BoardRepository.create (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + Python)
@@ -1178,7 +1178,7 @@
 
 ---
 
-## 57. Создать endpoint создания доски
+## 57. Создать endpoint создания доски (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1199,7 +1199,7 @@
 
 ---
 
-## 58. Создать endpoint списка досок
+## 58. Создать endpoint списка досок (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1220,7 +1220,7 @@
 
 ---
 
-## 59. Создать ColumnRepository.create
+## 59. Создать ColumnRepository.create (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + Python)
@@ -1241,7 +1241,7 @@
 
 ---
 
-## 60. Создать endpoint создания колонки
+## 60. Создать endpoint создания колонки (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1262,7 +1262,7 @@
 
 ---
 
-## 61. Создать TaskRepository.create
+## 61. Создать TaskRepository.create (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (SQLAlchemy + Python)
@@ -1283,7 +1283,7 @@
 
 ---
 
-## 62. Создать endpoint создания задачи
+## 62. Создать endpoint создания задачи (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1304,7 +1304,7 @@
 
 ---
 
-## 63. Создать endpoint обновления задачи
+## 63. Создать endpoint обновления задачи (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1325,7 +1325,7 @@
 
 ---
 
-## 64. Создать endpoint удаления задачи
+## 64. Создать endpoint удаления задачи (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1346,7 +1346,7 @@
 
 ---
 
-## 65. Создать endpoint перемещения задачи
+## 65. Создать endpoint перемещения задачи (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1367,7 +1367,7 @@
 
 ---
 
-## 66. Создать endpoint checklist items
+## 66. Создать endpoint checklist items (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1388,7 +1388,7 @@
 
 ---
 
-## 67. Создать endpoint toggle checklist item
+## 67. Создать endpoint toggle checklist item (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1409,7 +1409,7 @@
 
 ---
 
-## 68. Создать endpoint запуска time entry
+## 68. Создать endpoint запуска time entry (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1430,7 +1430,7 @@
 
 ---
 
-## 69. Создать endpoint остановки time entry
+## 69. Создать endpoint остановки time entry (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1451,7 +1451,7 @@
 
 ---
 
-## 70. Создать endpoint аналитики overview
+## 70. Создать endpoint аналитики overview (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)

@@ -60,3 +60,13 @@ class WorkspaceRepository:
         await self._db.refresh(workspace)
 
         return workspace
+
+    async def get_member(
+        self, workspace_id: uuid.UUID, user_id: uuid.UUID
+    ) -> Optional[WorkspaceMember]:
+        result = await self._db.execute(
+            select(WorkspaceMember)
+            .where(WorkspaceMember.workspace_id == workspace_id)
+            .where(WorkspaceMember.user_id == user_id)
+        )
+        return result.scalar_one_or_none()

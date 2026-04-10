@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import engine
-from app.routers import auth, health, workspace
+from app.routers import analytics, auth, board, checklist_item, column, health, task, time_entry, workspace
 
 
 @asynccontextmanager
@@ -41,3 +41,9 @@ API_PREFIX = "/api/v1"
 app.include_router(health.router, prefix=API_PREFIX)
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(workspace.router, prefix=API_PREFIX)
+app.include_router(board.router, prefix=API_PREFIX)
+app.include_router(column.router, prefix=API_PREFIX)
+app.include_router(task.router, prefix=API_PREFIX)
+app.include_router(checklist_item.router, prefix=API_PREFIX)
+app.include_router(time_entry.router, prefix=API_PREFIX)
+app.include_router(analytics.router, prefix=API_PREFIX)

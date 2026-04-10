@@ -8,6 +8,14 @@ from pydantic import BaseModel, Field
 
 # ── checklist ─────────────────────────────────────────────────────────────────
 
+class ChecklistItemCreate(BaseModel):
+    text: str = Field(min_length=1, max_length=1000)
+
+
+class ChecklistItemUpdate(BaseModel):
+    is_completed: bool
+
+
 class ChecklistItemResponse(BaseModel):
     id: str
     task_id: str
@@ -17,15 +25,28 @@ class ChecklistItemResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @classmethod
+    def from_orm(cls, c: object) -> "ChecklistItemResponse":
+        from app.models.checklist_item import ChecklistItem as CI
+        item: CI = c  # type: ignore[assignment]
+        return cls(
+            id=str(item.id),
+            task_id=str(item.task_id),
+            text=item.text,
+            is_completed=item.is_completed,
+            position=item.position,
+        )
+
 
 # ── task ──────────────────────────────────────────────────────────────────────
 
 class TaskCreate(BaseModel):
+    board_id: str
+    column_id: str
     title: str = Field(min_length=1, max_length=500)
     description: Optional[str] = None
     priority: str = "medium"          # low | medium | high | urgent
     due_date: Optional[datetime] = None
-    position: Optional[int] = None    # если None — сервис ставит в конец
 
 
 class TaskUpdate(BaseModel):
@@ -62,3 +83,27 @@ class TaskResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @classmethod
+    def from_orm(cls, t: object) -> "TaskResponse":
+        from app.models.task import Task as T
+        task: T = t  # type: ignore[assignment]
+        return cls(
+            id=str(task.id),
+            board_id=str(task.board_id),
+            column_id=str(task.column_id),
+            created_by=str(task.created_by) if task.created_by else None,
+            title=task.title,
+            description=task.description,
+            position=task.position,
+            status=task.status,
+            priority=task.priority,
+            due_date=task.due_date,
+            tracked_time_total=task.tracked_time_total,
+            pomodoro_sessions_count=task.pomodoro_sessions_count,
+            recurring_rule=task.recurring_rule,
+            is_archived=task.is_archived,
+            checklist_items=[],
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+        )
