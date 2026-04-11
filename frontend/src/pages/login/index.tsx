@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/store'
 import { authApi } from '@/shared/api/authApi'
 import { ApiError } from '@/shared/api/client'
@@ -40,7 +41,6 @@ export function LoginPage() {
 
   const [values, setValues] = useState<FormValues>({ email: '', password: '' })
   const [errors, setErrors] = useState<FormErrors>({})
-  const [apiError, setApiError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -51,7 +51,6 @@ export function LoginPage() {
       return
     }
     setErrors({})
-    setApiError(null)
     setIsLoading(true)
 
     try {
@@ -60,9 +59,9 @@ export function LoginPage() {
       navigate('/dashboard', { replace: true })
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setApiError('Invalid email or password')
+        toast.error('Invalid email or password')
       } else {
-        setApiError('Something went wrong. Please try again.')
+        toast.error('Something went wrong. Please try again.')
       }
     } finally {
       setIsLoading(false)
@@ -73,7 +72,6 @@ export function LoginPage() {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       setValues((prev) => ({ ...prev, [field]: e.target.value }))
       if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }))
-      if (apiError) setApiError(null)
     }
   }
 
@@ -92,13 +90,6 @@ export function LoginPage() {
 
         {/* Card */}
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 shadow-sm">
-          {/* API-level error */}
-          {apiError && (
-            <div className="mb-4 rounded-md bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 px-4 py-3">
-              <p className="text-sm text-red-600 dark:text-red-400">{apiError}</p>
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {/* Email */}
             <div>

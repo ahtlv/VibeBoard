@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/shared/ui/AppShell'
+import { ProBadge } from '@/shared/ui/PremiumGate'
 import { useTheme } from '@/app/providers/ThemeProvider'
 import { useAuth } from '@/features/auth/store'
 
@@ -54,9 +56,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 // ── component ─────────────────────────────────────────────────────────────────
 
+const PREMIUM_THEMES = [
+  { id: 'nord',    name: 'Nord',    icon: '🧊', hint: 'Arctic blue' },
+  { id: 'sunset',  name: 'Sunset',  icon: '🌅', hint: 'Warm orange' },
+  { id: 'forest',  name: 'Forest',  icon: '🌲', hint: 'Deep green'  },
+]
+
 export function SettingsPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
+  const isPro = user?.plan === 'pro' || user?.plan === 'team'
 
   const initials = user?.name
     .split(' ')
@@ -147,6 +157,51 @@ export function SettingsPage() {
                 </button>
               )
             })}
+          </div>
+
+          {/* Premium themes */}
+          <div className="mt-5">
+            <div className="mb-3 flex items-center gap-2">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                Premium themes
+              </p>
+              <ProBadge />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {PREMIUM_THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => !isPro && navigate('/billing')}
+                  disabled={isPro}
+                  aria-label={isPro ? `${t.name} theme (available)` : `${t.name} theme — upgrade to unlock`}
+                  className={[
+                    'relative flex flex-col items-start rounded-lg border p-3 text-left transition-colors',
+                    isPro
+                      ? 'border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 cursor-not-allowed opacity-60'
+                      : 'border-gray-200 dark:border-gray-800 hover:border-indigo-400 dark:hover:border-indigo-600 cursor-pointer',
+                  ].join(' ')}
+                >
+                  <span className="text-xl" aria-hidden>{t.icon}</span>
+                  <p className="mt-1.5 text-xs font-medium text-gray-900 dark:text-gray-100">
+                    {t.name}
+                  </p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500">{t.hint}</p>
+                  {!isPro && (
+                    <span className="absolute top-2 right-2 text-gray-400 dark:text-gray-500 text-xs" aria-hidden>
+                      🔒
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+            {!isPro && (
+              <button
+                onClick={() => navigate('/billing')}
+                className="mt-3 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+              >
+                Upgrade to Pro to unlock themes
+              </button>
+            )}
           </div>
         </Section>
 

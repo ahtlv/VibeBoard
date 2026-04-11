@@ -16,6 +16,7 @@ from app.services.task import (
     BoardNotFoundError,
     ColumnBoardMismatchError,
     ColumnNotFoundError,
+    RecurringRuleNotAllowedError,
     TaskNotFoundError,
     TaskService,
 )
@@ -35,7 +36,7 @@ async def create_task(
 ) -> TaskResponse:
     service = TaskService(db)
     try:
-        task = await service.create(body, current_user_id=current_user.id)
+        task = await service.create(body, current_user=current_user)
     except BoardNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Board not found")
     except BoardAccessDeniedError:
@@ -44,6 +45,8 @@ async def create_task(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Column not found")
     except ColumnBoardMismatchError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Column does not belong to this board")
+    except RecurringRuleNotAllowedError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Recurring tasks require a Pro or Team plan.")
     return TaskResponse.from_orm(task)
 
 
@@ -80,7 +83,7 @@ async def update_task(
     service = TaskService(db)
     try:
         task = await service.update(
-            uuid.UUID(task_id), body, current_user_id=current_user.id
+            uuid.UUID(task_id), body, current_user=current_user
         )
     except TaskNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
@@ -88,6 +91,8 @@ async def update_task(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Board not found")
     except BoardAccessDeniedError:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a workspace member")
+    except RecurringRuleNotAllowedError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Recurring tasks require a Pro or Team plan.")
     return TaskResponse.from_orm(task)
 
 

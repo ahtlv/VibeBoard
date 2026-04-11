@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class WorkspaceCreate(BaseModel):
@@ -32,4 +32,37 @@ class WorkspaceResponse(BaseModel):
             owner_id=str(w.owner_id),
             created_at=w.created_at,
             updated_at=w.updated_at,
+        )
+
+
+# ── invitation ────────────────────────────────────────────────────────────────
+
+class InviteRequest(BaseModel):
+    email: EmailStr
+    role: Literal["member", "admin"] = "member"
+
+
+class InvitationResponse(BaseModel):
+    id: str
+    workspace_id: str
+    invited_by: Optional[str]
+    email: str
+    role: str
+    status: str
+    expires_at: datetime
+    created_at: datetime
+
+    @classmethod
+    def from_orm(cls, inv: object) -> "InvitationResponse":
+        from app.models.invitation import Invitation as Inv
+        i: Inv = inv  # type: ignore[assignment]
+        return cls(
+            id=str(i.id),
+            workspace_id=str(i.workspace_id),
+            invited_by=str(i.invited_by) if i.invited_by else None,
+            email=i.email,
+            role=i.role,
+            status=i.status,
+            expires_at=i.expires_at,
+            created_at=i.created_at,
         )

@@ -1,7 +1,11 @@
+import { type FormEvent, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { AppShell } from '@/shared/ui/AppShell'
+import { ApiError } from '@/shared/api/client'
+import { workspacesApi } from '@/shared/api/workspacesApi'
 import type { WorkspaceRole } from '@/shared/types/workspace'
 
-// ── mock data ─────────────────────────────────────────────────────────────────
+// ── mock members (таблица участников — отдельная задача) ──────────────────────
 
 interface WorkspaceMember {
   id: string
@@ -71,6 +75,44 @@ function formatDate(iso: string): string {
 // ── component ─────────────────────────────────────────────────────────────────
 
 export function WorkspacePage() {
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null)
+  const [showInviteForm, setShowInviteForm] = useState(false)
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState<'member' | 'admin'>('member')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    workspacesApi.listWorkspaces().then((list) => {
+      if (!cancelled && list.length > 0) setWorkspaceId(list[0].id)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  async function handleInvite(e: FormEvent) {
+    e.preventDefault()
+    if (!workspaceId || !email.trim()) return
+    setSubmitting(true)
+    try {
+      await workspacesApi.invite(workspaceId, { email: email.trim(), role })
+      toast.success(`Invitation sent to ${email.trim()}`)
+      setEmail('')
+      setRole('member')
+      setShowInviteForm(false)
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Failed to send invitation'
+      toast.error(msg)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function handleCancel() {
+    setEmail('')
+    setRole('member')
+    setShowInviteForm(false)
+  }
+
   return (
     <AppShell>
       <div className="mb-6 flex items-start justify-between">
@@ -80,14 +122,78 @@ export function WorkspacePage() {
             {MOCK_MEMBERS.length} members
           </p>
         </div>
-        {/* TODO: подключить workspacesApi.invite() */}
-        <button
-          onClick={() => console.log('TODO: open invite modal')}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
-        >
-          + Invite member
-        </button>
+        {!showInviteForm && (
+          <button
+            onClick={() => setShowInviteForm(true)}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+          >
+            + Invite member
+          </button>
+        )}
       </div>
+
+      {showInviteForm && (
+        <div className="mb-6 max-w-md rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+          <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Invite a new member
+          </h2>
+          <form onSubmit={handleInvite} className="flex flex-col gap-3">
+            <div>
+              <label
+                htmlFor="invite-email"
+                className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+              >
+                Email address
+              </label>
+              <input
+                id="invite-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="colleague@example.com"
+                disabled={submitting}
+                className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="invite-role"
+                className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400"
+              >
+                Role
+              </label>
+              <select
+                id="invite-role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as 'member' | 'admin')}
+                disabled={submitting}
+                className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="submit"
+                disabled={submitting || !email.trim()}
+                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Sending…' : 'Send invite'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={submitting}
+                className="rounded-md border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="max-w-3xl">
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
@@ -109,6 +215,25 @@ export function WorkspacePage() {
 
           {/* Rows */}
           <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+            {MOCK_MEMBERS.length === 0 && (
+              <li className="flex flex-col items-center py-12 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl select-none">
+                  👥
+                </div>
+                <p className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  No members yet
+                </p>
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                  Invite teammates to collaborate on this workspace
+                </p>
+                <button
+                  onClick={() => setShowInviteForm(true)}
+                  className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+                >
+                  + Invite member
+                </button>
+              </li>
+            )}
             {MOCK_MEMBERS.map((member) => (
               <li
                 key={member.id}

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { Task } from '@/entities/task/types'
 import type { Priority } from '@/shared/types/task'
 import { timeEntriesApi } from '@/shared/api/timeEntriesApi'
+import { PremiumGate } from '@/shared/ui/PremiumGate'
+import { useAuth } from '@/features/auth/store'
 
 interface TaskModalProps {
   task: Task
@@ -32,6 +34,8 @@ function formatDueDate(iso: string): string {
 }
 
 export function TaskModal({ task, onClose }: TaskModalProps) {
+  const { user } = useAuth()
+  const isPro = user?.plan === 'pro' || user?.plan === 'team'
   const [checkedItems, setCheckedItems] = useState<Set<string>>(() => {
     const ids = new Set<string>()
     task.checklists.forEach((cl) => cl.items.forEach((item) => { if (item.completed) ids.add(item.id) }))
@@ -340,6 +344,24 @@ export function TaskModal({ task, onClose }: TaskModalProps) {
               </div>
             )
           })}
+
+          {/* Recurring tasks */}
+          <div>
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              Recurring
+            </p>
+            {isPro ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500">
+                Recurring rules — coming soon
+              </p>
+            ) : (
+              <PremiumGate
+                feature="Recurring tasks"
+                description="Automatically repeat this task daily, weekly, or on a custom schedule."
+                ctaLabel="Unlock with Pro"
+              />
+            )}
+          </div>
 
           {/* Labels */}
           {task.labels.length > 0 && (

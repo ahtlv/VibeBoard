@@ -154,8 +154,23 @@ export function DashboardPage() {
         {/* Main kanban area */}
         <div className="flex min-w-0 flex-1 flex-col">
           {loadState === 'loading' && (
-            <div className="flex flex-1 items-center justify-center">
-              <p className="text-sm text-gray-400 dark:text-gray-500">Loading boards…</p>
+            <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex w-64 shrink-0 flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900">
+                  <div className="flex items-center justify-between px-3 py-2.5">
+                    <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                    <div className="h-4 w-5 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+                  </div>
+                  <div className="flex-1 space-y-2 px-2 pb-2">
+                    {[0, 1].map((j) => (
+                      <div key={j} className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3">
+                        <div className="mb-2 h-4 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                        <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -213,10 +228,24 @@ export function DashboardPage() {
               {/* Columns area */}
               <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
                 {board.columns.length === 0 ? (
-                  <div className="flex flex-1 items-center justify-center">
-                    <p className="text-sm text-gray-400 dark:text-gray-500">
-                      No columns yet. Add a column to get started.
-                    </p>
+                  <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl select-none">
+                      📋
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        This board is empty
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+                        Add a column to start organizing your tasks
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {/* TODO: создать колонку */}}
+                      className="mt-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+                    >
+                      + Add column
+                    </button>
                   </div>
                 ) : (
                   board.columns.map((column) => (

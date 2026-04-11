@@ -133,7 +133,17 @@ export function CalendarPage() {
         )}
 
         {groups.length === 0 && noDate.length === 0 && (
-          <p className="text-sm text-gray-400 dark:text-gray-500">No tasks yet.</p>
+          <div className="flex flex-col items-center py-16 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl select-none">
+              📅
+            </div>
+            <p className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">
+              No tasks with deadlines
+            </p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              Set a due date on a task in the board to see it here
+            </p>
+          </div>
         )}
       </div>
 

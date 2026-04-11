@@ -1,4 +1,5 @@
 import { useRef, useState, type DragEvent, type KeyboardEvent } from 'react'
+import { toast } from 'sonner'
 import type { Column } from '@/entities/board/types'
 import type { Task } from '@/entities/task/types'
 import { TaskCard } from './TaskCard'
@@ -65,6 +66,9 @@ export function KanbanColumn({ column, onAddTask, onMoveTask, onTaskClick }: Kan
       await onAddTask(title)
       setDraftTitle('')
       setIsAdding(false)
+      toast.success('Task added')
+    } catch {
+      toast.error('Failed to add task. Please try again.')
     } finally {
       setIsSubmitting(false)
     }

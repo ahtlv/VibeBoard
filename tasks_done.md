@@ -1598,7 +1598,7 @@
 
 ---
 
-## 77. Подключить Analytics page к analyticsApi
+## 77. Подключить Analytics page к analyticsApi (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -1619,7 +1619,7 @@
 
 ---
 
-## 78. Создать backend endpoint subscription status
+## 78. Создать backend endpoint subscription status (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1640,7 +1640,7 @@
 
 ---
 
-## 79. Создать backend endpoint Stripe checkout session
+## 79. Создать backend endpoint Stripe checkout session (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python + Stripe)
@@ -1661,7 +1661,7 @@
 
 ---
 
-## 80. Создать backend endpoint Stripe webhook
+## 80. Создать backend endpoint Stripe webhook (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python + Stripe)
@@ -1682,7 +1682,7 @@
 
 ---
 
-## 81. Подключить Billing page к billingApi
+## 81. Подключить Billing page к billingApi (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -1703,7 +1703,7 @@
 
 ---
 
-## 82. Добавить backend-проверку лимита досок free плана
+## 82. Добавить backend-проверку лимита досок free плана (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1724,7 +1724,7 @@
 
 ---
 
-## 83. Добавить backend-проверку recurring tasks только для платных планов
+## 83. Добавить backend-проверку recurring tasks только для платных планов (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1745,7 +1745,7 @@
 
 ---
 
-## 84. Добавить frontend-индикатор ограничений free плана
+## 84. Добавить frontend-индикатор ограничений free плана (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -1766,7 +1766,7 @@
 
 ---
 
-## 85. Создать backend endpoint приглашения участника
+## 85. Создать backend endpoint приглашения участника (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1787,7 +1787,7 @@
 
 ---
 
-## 86. Подключить Invite member на frontend
+## 86. Подключить Invite member на frontend (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript)
@@ -1808,7 +1808,7 @@
 
 ---
 
-## 87. Добавить единый backend-формат ошибок
+## 87. Добавить единый backend-формат ошибок (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1829,7 +1829,7 @@
 
 ---
 
-## 88. Добавить frontend toast notifications
+## 88. Добавить frontend toast notifications (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -1850,7 +1850,7 @@
 
 ---
 
-## 89. Добавить backend pagination для списка досок
+## 89. Добавить backend pagination для списка досок (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1871,7 +1871,7 @@
 
 ---
 
-## 90. Добавить базовые frontend loading states
+## 90. Добавить базовые frontend loading states (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -1892,7 +1892,7 @@
 
 ---
 
-## 91. Добавить базовые frontend empty states
+## 91. Добавить базовые frontend empty states (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + TypeScript + Tailwind CSS)
@@ -1913,7 +1913,7 @@
 
 ---
 
-## 92. Создать backend healthcheck для БД
+## 92. Создать backend healthcheck для БД (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (FastAPI + Python)
@@ -1934,7 +1934,7 @@
 
 ---
 
-## 93. Добавить Dockerfile для backend
+## 93. Добавить Dockerfile для backend (done)
 
 Роль  
 Кто пишет? DevOps / Senior Backend Developer
@@ -1955,7 +1955,7 @@
 
 ---
 
-## 94. Добавить Dockerfile для frontend
+## 94. Добавить Dockerfile для frontend (done)
 
 Роль  
 Кто пишет? DevOps / Senior Frontend Developer
@@ -1976,7 +1976,7 @@
 
 ---
 
-## 95. Добавить базовый docker-compose
+## 95. Добавить базовый docker-compose (done)
 
 Роль  
 Кто пишет? DevOps / Senior Developer
@@ -1997,7 +1997,7 @@
 
 ---
 
-## 96. Добавить backend тест регистрации
+## 96. Добавить backend тест регистрации (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (Python + pytest)
@@ -2018,7 +2018,7 @@
 
 ---
 
-## 97. Добавить backend тест логина
+## 97. Добавить backend тест логина (done)
 
 Роль  
 Кто пишет? Senior Backend Developer (Python + pytest)

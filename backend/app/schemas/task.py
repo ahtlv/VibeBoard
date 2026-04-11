@@ -47,6 +47,7 @@ class TaskCreate(BaseModel):
     description: Optional[str] = None
     priority: str = "medium"          # low | medium | high | urgent
     due_date: Optional[datetime] = None
+    recurring_rule: Optional[dict] = None   # Pro/Team only
 
 
 class TaskUpdate(BaseModel):
@@ -56,6 +57,7 @@ class TaskUpdate(BaseModel):
     priority: Optional[str] = None
     due_date: Optional[datetime] = None
     assignee_ids: Optional[list[str]] = None
+    recurring_rule: Optional[dict] = None   # Pro/Team only; pass null to clear
 
 
 class TaskMoveRequest(BaseModel):

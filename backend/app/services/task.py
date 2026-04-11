@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.task import Task
+from app.models.user import User
 from app.repositories.board import BoardRepository
 from app.repositories.column import ColumnRepository
 from app.repositories.task import TaskRepository
@@ -13,6 +14,11 @@ from app.schemas.task import TaskCreate, TaskMoveRequest, TaskUpdate
 
 
 class TaskNotFoundError(Exception):
+    pass
+
+
+class RecurringRuleNotAllowedError(Exception):
+    """Попытка установить recurring_rule на free плане."""
     pass
 
 
@@ -41,7 +47,7 @@ class TaskService:
         self._board_repo = BoardRepository(db)
         self._ws_repo = WorkspaceRepository(db)
 
-    async def create(self, data: TaskCreate, current_user_id: uuid.UUID) -> Task:
+    async def create(self, data: TaskCreate, current_user: User) -> Task:
         board_id = uuid.UUID(data.board_id)
         column_id = uuid.UUID(data.column_id)
 
@@ -49,7 +55,7 @@ class TaskService:
         if board is None:
             raise BoardNotFoundError(board_id)
 
-        member = await self._ws_repo.get_member(board.workspace_id, current_user_id)
+        member = await self._ws_repo.get_member(board.workspace_id, current_user.id)
         if member is None:
             raise BoardAccessDeniedError(board_id)
 
@@ -60,20 +66,24 @@ class TaskService:
         if column.board_id != board_id:
             raise ColumnBoardMismatchError(column_id)
 
+        if data.recurring_rule is not None and current_user.plan == 'free':
+            raise RecurringRuleNotAllowedError
+
         task = await self._task_repo.create(
             title=data.title,
             board_id=board_id,
             column_id=column_id,
-            created_by=current_user_id,
+            created_by=current_user.id,
             description=data.description,
             priority=data.priority,
             due_date=data.due_date,
+            recurring_rule=data.recurring_rule,
         )
         await self._db.commit()
         return task
 
     async def update(
-        self, task_id: uuid.UUID, data: TaskUpdate, current_user_id: uuid.UUID
+        self, task_id: uuid.UUID, data: TaskUpdate, current_user: User
     ) -> Task:
         task = await self._task_repo.get_by_id(task_id)
         if task is None:
@@ -83,11 +93,16 @@ class TaskService:
         if board is None:
             raise BoardNotFoundError(task.board_id)
 
-        member = await self._ws_repo.get_member(board.workspace_id, current_user_id)
+        member = await self._ws_repo.get_member(board.workspace_id, current_user.id)
         if member is None:
             raise BoardAccessDeniedError(task.board_id)
 
         fields = data.model_dump(exclude_unset=True)
+
+        # Разрешаем обнулять recurring_rule (downgrade scenario), но не устанавливать
+        if fields.get('recurring_rule') is not None and current_user.plan == 'free':
+            raise RecurringRuleNotAllowedError
+
         task = await self._task_repo.update(task, fields)
         await self._db.commit()
         return task

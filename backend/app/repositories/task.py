@@ -102,6 +102,7 @@ class TaskRepository:
         description: Optional[str] = None,
         priority: str = "medium",
         due_date: Optional[datetime] = None,
+        recurring_rule: Optional[dict] = None,
     ) -> Task:
         position = await self._next_position(column_id)
         task = Task(
@@ -113,6 +114,7 @@ class TaskRepository:
             priority=priority,
             due_date=due_date,
             position=position,
+            recurring_rule=recurring_rule,
         )
         self._db.add(task)
         await self._db.flush()

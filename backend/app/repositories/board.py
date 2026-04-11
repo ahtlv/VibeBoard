@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.board import Board
@@ -36,13 +36,28 @@ class BoardRepository:
         await self._db.refresh(board)
         return board
 
+    async def count_for_user(self, user_id: uuid.UUID) -> int:
+        """Количество активных (не заархивированных) досок, созданных пользователем."""
+        result = await self._db.execute(
+            select(func.count())
+            .where(Board.created_by == user_id, Board.is_archived.is_(False))
+        )
+        return result.scalar_one()
+
     async def list_for_workspace(
-        self, workspace_id: uuid.UUID, include_archived: bool = False
+        self,
+        workspace_id: uuid.UUID,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+        include_archived: bool = False,
     ) -> list[Board]:
         stmt = (
             select(Board)
             .where(Board.workspace_id == workspace_id)
             .order_by(Board.created_at)
+            .limit(limit)
+            .offset(offset)
         )
         if not include_archived:
             stmt = stmt.where(Board.is_archived.is_(False))

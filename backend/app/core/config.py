@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
+    # Frontend base URL — used for Stripe redirect URLs
+    FRONTEND_URL: str = "http://localhost:5173"
+
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""

@@ -8,5 +8,6 @@ from app.models.task import Task  # noqa: F401
 from app.models.checklist_item import ChecklistItem  # noqa: F401
 from app.models.time_entry import TimeEntry  # noqa: F401
 from app.models.subscription import Subscription  # noqa: F401
+from app.models.invitation import Invitation  # noqa: F401
 
-__all__ = ["User", "Workspace", "WorkspaceMember", "Board", "Column", "Task", "ChecklistItem", "TimeEntry", "Subscription"]
+__all__ = ["User", "Workspace", "WorkspaceMember", "Board", "Column", "Task", "ChecklistItem", "TimeEntry", "Subscription", "Invitation"]

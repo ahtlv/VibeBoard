@@ -1,19 +1,15 @@
+import { useState, useEffect } from 'react'
 import { AppShell } from '@/shared/ui/AppShell'
-import { MOCK_BOARD } from '@/shared/lib/mock/board'
+import { PremiumGate } from '@/shared/ui/PremiumGate'
+import { analyticsApi, AnalyticsOverview } from '@/shared/api/analyticsApi'
+import { useAuth } from '@/features/auth/store'
 
-// ── derive mock stats from board data ────────────────────────────────────────
+// ── helpers ───────────────────────────────────────────────────────────────────
 
-function buildStats() {
-  const allTasks = MOCK_BOARD.columns.flatMap((col) => col.tasks)
-  const completedTasks = allTasks.filter((t) => t.status === 'done').length
-  const totalTrackedSeconds = allTasks.reduce((sum, t) => sum + t.totalTrackedSeconds, 0)
-  const pomodoroSessions = allTasks.reduce((sum, t) => sum + t.pomodoroSessionsCount, 0)
-
-  const h = Math.floor(totalTrackedSeconds / 3600)
-  const m = Math.floor((totalTrackedSeconds % 3600) / 60)
-  const trackedTime = totalTrackedSeconds > 0 ? `${h}h ${m}m` : '0h 0m'
-
-  return { completedTasks, trackedTime, pomodoroSessions, streak: 4 }
+function formatSeconds(s: number): string {
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  return `${h}h ${m}m`
 }
 
 // ── stat card ─────────────────────────────────────────────────────────────────
@@ -43,10 +39,44 @@ function StatCard({ label, value, description, accent, icon }: StatCardProps) {
   )
 }
 
+// ── types ─────────────────────────────────────────────────────────────────────
+
+type LoadState = 'loading' | 'error' | 'ready'
+
 // ── component ─────────────────────────────────────────────────────────────────
 
 export function AnalyticsPage() {
-  const stats = buildStats()
+  const { user } = useAuth()
+  const isPro = user?.plan === 'pro' || user?.plan === 'team'
+  const [loadState, setLoadState] = useState<LoadState>('loading')
+  const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setLoadState('loading')
+      try {
+        const data = await analyticsApi.getOverview()
+        if (cancelled) return
+        setOverview(data)
+        setLoadState('ready')
+      } catch {
+        if (!cancelled) setLoadState('error')
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  if (loadState === 'error') {
+    return (
+      <AppShell>
+        <p className="text-sm text-red-500">Failed to load analytics.</p>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell>
@@ -59,47 +89,62 @@ export function AnalyticsPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Completed tasks"
-          value={stats.completedTasks}
-          description="Tasks marked as done"
-          accent="text-indigo-600 dark:text-indigo-400"
-          icon="✅"
-        />
-        <StatCard
-          label="Tracked time"
-          value={stats.trackedTime}
-          description="Total time logged"
-          accent="text-emerald-600 dark:text-emerald-400"
-          icon="⏱"
-        />
-        <StatCard
-          label="Current streak"
-          value={`${stats.streak} days`}
-          description="Consecutive active days"
-          accent="text-orange-500 dark:text-orange-400"
-          icon="🔥"
-        />
-        <StatCard
-          label="Pomodoro sessions"
-          value={stats.pomodoroSessions}
-          description="Focus sessions completed"
-          accent="text-red-500 dark:text-red-400"
-          icon="🍅"
-        />
+        {loadState === 'loading' ? (
+          [0, 1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <div className="mb-4 h-3 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              <div className="mb-2 h-9 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+              <div className="h-3 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+            </div>
+          ))
+        ) : (
+          <>
+            <StatCard
+              label="Completed tasks"
+              value={overview!.completedTasks}
+              description="Tasks marked as done"
+              accent="text-indigo-600 dark:text-indigo-400"
+              icon="✅"
+            />
+            <StatCard
+              label="Tracked time"
+              value={formatSeconds(overview!.totalTrackedSeconds)}
+              description="Total time logged"
+              accent="text-emerald-600 dark:text-emerald-400"
+              icon="⏱"
+            />
+            <StatCard
+              label="Current streak"
+              value={`${overview!.currentStreakDays} days`}
+              description="Consecutive active days"
+              accent="text-orange-500 dark:text-orange-400"
+              icon="🔥"
+            />
+            <StatCard
+              label="Pomodoro sessions"
+              value={overview!.pomodoroSessionsCount}
+              description="Focus sessions completed"
+              accent="text-red-500 dark:text-red-400"
+              icon="🍅"
+            />
+          </>
+        )}
       </div>
 
-      {/* Pro upsell placeholder */}
-      <div className="mt-8 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center">
-        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-          Advanced analytics — charts, trends, board breakdowns
-        </p>
-        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-          Available on Pro and Team plans
-        </p>
-        <button className="mt-3 rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
-          Upgrade to Pro
-        </button>
+      {/* Advanced analytics */}
+      <div className="mt-8">
+        {isPro ? (
+          <div className="rounded-xl border border-dashed border-gray-200 dark:border-gray-700 p-6 text-center">
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              Charts, trends, board breakdowns — coming soon
+            </p>
+          </div>
+        ) : (
+          <PremiumGate
+            feature="Advanced analytics"
+            description="Charts, daily trends, board breakdowns, and completion rate — available on Pro and Team plans."
+          />
+        )}
       </div>
     </AppShell>
   )
