@@ -18,7 +18,11 @@ from app.routers import analytics, auth, billing, board, checklist_item, column,
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    # startup — engine создаётся при импорте, здесь ничего не нужно
+    # startup — создаём таблицы если не существуют
+    from app.core.database import Base
+    import app.models  # noqa: F401 — регистрируем все модели в метаданных
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield
     # shutdown — корректно закрываем все соединения пула
     await engine.dispose()

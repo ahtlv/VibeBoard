@@ -25,6 +25,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/vibeboard
       APP_ENV: development
       DEBUG: "true"
+      CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173"]'
     depends_on:
       postgres:
         condition: service_healthy

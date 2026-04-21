@@ -2039,7 +2039,7 @@
 
 ---
 
-## 98. Добавить frontend тест login form
+## 98. Добавить frontend тест login form (done)
 
 Роль  
 Кто пишет? Senior Frontend Developer (React + Testing Library)

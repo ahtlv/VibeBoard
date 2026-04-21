@@ -39,10 +39,11 @@ class AuthService:
         if existing is not None:
             raise EmailAlreadyTakenError(data.email)
 
+        name = data.name or data.email.split("@")[0]
         user = await self._users.create(
             email=data.email,
             password_hash=hash_password(data.password),
-            name=data.name,
+            name=name,
         )
         await self._db.commit()
         return user

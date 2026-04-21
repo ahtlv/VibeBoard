@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/shared/ui/AppShell'
 import { BoardHeader, KanbanColumn, TaskModal } from '@/widgets'
 import { boardsApi, workspacesApi } from '@/shared/api'
@@ -18,6 +18,8 @@ export function DashboardPage() {
   const [board, setBoard] = useState<Board | null>(null)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [moveError, setMoveError] = useState<string | null>(null)
+  const [newWorkspaceName, setNewWorkspaceName] = useState('')
+  const [creatingWorkspace, setCreatingWorkspace] = useState(false)
 
   // Загружаем workspace → boards при маунте
   useEffect(() => {
@@ -58,6 +60,35 @@ export function DashboardPage() {
     load()
     return () => { cancelled = true }
   }, [])
+
+  async function handleCreateWorkspace(e: FormEvent) {
+    e.preventDefault()
+    const name = newWorkspaceName.trim()
+    if (!name) return
+    setCreatingWorkspace(true)
+    try {
+      await workspacesApi.createWorkspace({ name })
+      setNewWorkspaceName('')
+      setLoadState('loading')
+      // перезагружаем данные
+      const workspaces = await workspacesApi.listWorkspaces()
+      if (workspaces.length > 0) {
+        const ws = workspaces[0]
+        setWorkspace(ws)
+        const boards = await boardsApi.listBoards(ws.id)
+        setBoardSummaries(boards)
+        setLoadState(boards.length === 0 ? 'empty' : 'ready')
+        if (boards.length > 0) {
+          setActiveBoardId(boards[0].id)
+          setBoard(summaryToBoard(boards[0]))
+        }
+      }
+    } catch {
+      setCreatingWorkspace(false)
+    } finally {
+      setCreatingWorkspace(false)
+    }
+  }
 
   // При смене активной доски обновляем board из summaries
   useEffect(() => {
@@ -181,17 +212,29 @@ export function DashboardPage() {
           )}
 
           {loadState === 'empty' && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {workspace ? 'No boards yet.' : 'No workspace found.'}
-              </p>
-              {workspace && (
-                <button
-                  onClick={() => {/* TODO: создать первую доску */}}
-                  className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
-                >
-                  Create board
-                </button>
+            <div className="flex flex-1 flex-col items-center justify-center gap-4">
+              {!workspace ? (
+                <>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">You don't have a workspace yet.</p>
+                  <form onSubmit={handleCreateWorkspace} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newWorkspaceName}
+                      onChange={(e) => setNewWorkspaceName(e.target.value)}
+                      placeholder="Workspace name"
+                      className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={creatingWorkspace || !newWorkspaceName.trim()}
+                      className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-60"
+                    >
+                      {creatingWorkspace ? 'Creating…' : 'Create workspace'}
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No boards yet.</p>
               )}
             </div>
           )}

@@ -1,10 +1,14 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { workspacesApi } from '@/shared/api/workspacesApi'
 
 export function OnboardingPage() {
+  const navigate = useNavigate()
   const [workspaceName, setWorkspaceName] = useState('')
   const [error, setError] = useState<string | undefined>()
+  const [isLoading, setIsLoading] = useState(false)
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
 
     if (!workspaceName.trim()) {
@@ -17,8 +21,15 @@ export function OnboardingPage() {
     }
 
     setError(undefined)
-    // TODO: подключить workspacesApi.create({ name: workspaceName.trim() })
-    console.log('create workspace', workspaceName.trim())
+    setIsLoading(true)
+    try {
+      await workspacesApi.createWorkspace({ name: workspaceName.trim() })
+      navigate('/dashboard', { replace: true })
+    } catch {
+      setError('Failed to create workspace. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -81,9 +92,10 @@ export function OnboardingPage() {
 
             <button
               type="submit"
-              className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors"
+              disabled={isLoading}
+              className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Continue
+              {isLoading ? 'Creating…' : 'Continue'}
             </button>
           </form>
         </div>

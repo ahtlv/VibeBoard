@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/calendar', label: 'Calendar' },
   { to: '/analytics', label: 'Analytics' },
-  { to: '/workspace', label: 'Workspace' },
+  { to: '/workspace', label: 'Members' },
   { to: '/settings', label: 'Settings' },
   { to: '/billing', label: 'Billing' },
 ] as const

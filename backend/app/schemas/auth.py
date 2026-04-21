@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    name: str = Field(min_length=1, max_length=255)
+    name: Optional[str] = Field(default=None, max_length=255)
 
     @field_validator("password")
     @classmethod
