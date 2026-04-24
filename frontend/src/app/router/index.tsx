@@ -8,6 +8,7 @@ import {
   OnboardingPage,
   RegisterPage,
   SettingsPage,
+  VerifyEmailPage,
   WorkspacePage,
 } from '@/pages'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -18,6 +19,7 @@ export function AppRouter() {
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>

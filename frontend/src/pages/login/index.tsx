@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useAuth } from '@/features/auth/store'
 import { authApi } from '@/shared/api/authApi'
 import { ApiError } from '@/shared/api/client'
+import { ThemeToggle } from '@/shared/ui/ThemeToggle'
 
 interface FormValues {
   email: string
@@ -60,6 +61,8 @@ export function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         toast.error('Invalid email or password')
+      } else if (err instanceof ApiError && err.status === 403) {
+        toast.error('Please confirm your email before signing in.')
       } else {
         toast.error('Something went wrong. Please try again.')
       }
@@ -77,6 +80,10 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+      <div className="fixed right-4 top-2.5 z-10">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 text-center">

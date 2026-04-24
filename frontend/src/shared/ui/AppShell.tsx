@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/features/auth/store'
 import { ThemeToggle } from './ThemeToggle'
 
 interface AppShellProps {
@@ -17,6 +18,14 @@ const NAV_ITEMS = [
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const navigate = useNavigate()
+  const { logout } = useAuth()
+
+  function handleLogout() {
+    logout()
+    setSidebarOpen(false)
+    navigate('/login', { replace: true })
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
@@ -82,6 +91,19 @@ export function AppShell({ children }: AppShellProps) {
               ))}
             </ul>
           </nav>
+
+          <div className="border-t border-gray-200 px-3 py-4 dark:border-gray-800">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition-colors hover:border-red-300 hover:bg-red-100 hover:text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/60 dark:hover:text-red-300"
+            >
+              <span>Logout</span>
+              <span aria-hidden="true" className="text-base leading-none">
+                ↪
+              </span>
+            </button>
+          </div>
         </aside>
 
         {/* Main content */}

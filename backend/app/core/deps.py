@@ -52,7 +52,7 @@ async def get_current_user(
         raise _401
 
     user = await UserRepository(db).get_by_id(uid)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.email_verified_at is None:
         raise _401
 
     return user

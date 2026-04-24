@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     # Frontend base URL — used for Stripe redirect URLs
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # Email verification
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
+    EMAIL_FROM: str = "VibeBoard <no-reply@vibeboard.local>"
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_TLS: bool = True
+
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""

@@ -1,5 +1,6 @@
 export { LoginPage } from './login'
 export { RegisterPage } from './register'
+export { VerifyEmailPage } from './verify-email'
 export { OnboardingPage } from './onboarding'
 export { DashboardPage } from './dashboard'
 export { CalendarPage } from './calendar'

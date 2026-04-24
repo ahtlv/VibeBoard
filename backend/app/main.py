@@ -4,6 +4,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from starlette.exceptions import HTTPException
 
 from app.core.config import settings
@@ -23,6 +24,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     import app.models  # noqa: F401 — регистрируем все модели в метаданных
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        if conn.dialect.name == "postgresql":
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP WITH TIME ZONE"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token_hash VARCHAR(64)"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_sent_at TIMESTAMP WITH TIME ZONE"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_email_verification_token_hash ON users (email_verification_token_hash)"))
+            await conn.execute(text(
+                "UPDATE users SET email_verified_at = NOW() "
+                "WHERE email_verified_at IS NULL AND email_verification_token_hash IS NULL"
+            ))
     yield
     # shutdown — корректно закрываем все соединения пула
     await engine.dispose()

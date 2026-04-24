@@ -44,6 +44,7 @@ class UserResponse(BaseModel):
     email: str
     name: str
     avatar_url: Optional[str]
+    is_email_verified: bool
     plan: str
     settings: UserSettingsResponse
     created_at: datetime
@@ -60,6 +61,7 @@ class UserResponse(BaseModel):
             email=u.email,
             name=u.name,
             avatar_url=u.avatar_url,
+            is_email_verified=u.email_verified_at is not None,
             plan=u.plan,
             settings=UserSettingsResponse(
                 theme=u.settings_theme,
@@ -82,4 +84,15 @@ class LoginResponse(TokenResponse):
 
 
 class RegisterResponse(TokenResponse):
+    user: UserResponse
+
+
+class RegisterPendingResponse(BaseModel):
+    email: str
+    email_verification_required: bool = True
+    message: str
+    dev_verification_url: Optional[str] = None
+
+
+class VerifyEmailResponse(TokenResponse):
     user: UserResponse

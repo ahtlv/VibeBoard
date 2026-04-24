@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '@/features/auth/store'
+import { Link } from 'react-router-dom'
 import { authApi } from '@/shared/api/authApi'
 import { ApiError } from '@/shared/api/client'
+import { ThemeToggle } from '@/shared/ui/ThemeToggle'
 
 interface FormValues {
   name: string
@@ -62,9 +62,6 @@ const inputClass = (hasError: boolean, disabled: boolean) =>
   ].join(' ')
 
 export function RegisterPage() {
-  const navigate = useNavigate()
-  const { setAuth } = useAuth()
-
   const [values, setValues] = useState<FormValues>({
     name: '',
     email: '',
@@ -73,6 +70,8 @@ export function RegisterPage() {
   })
   const [errors, setErrors] = useState<FormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
+  const [devVerificationUrl, setDevVerificationUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -92,11 +91,13 @@ export function RegisterPage() {
         email: values.email,
         password: values.password,
       })
-      setAuth(result.user, result.access_token)
-      navigate('/onboarding', { replace: true })
+      setRegisteredEmail(result.email)
+      setDevVerificationUrl(result.dev_verification_url)
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setApiError('An account with this email already exists')
+      } else if (err instanceof ApiError && err.status === 503) {
+        setApiError('Email delivery is not configured. Please contact the site owner.')
       } else {
         setApiError('Something went wrong. Please try again.')
       }
@@ -115,6 +116,10 @@ export function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+      <div className="fixed right-4 top-2.5 z-10">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 text-center">
@@ -135,6 +140,44 @@ export function RegisterPage() {
             </div>
           )}
 
+          {registeredEmail ? (
+            <div className="space-y-4 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400">
+                ✓
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                  Check your email
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                  We sent a confirmation link to{' '}
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {registeredEmail}
+                  </span>
+                  . Open it to activate your account and enter VibeBoard.
+                </p>
+              </div>
+              <Link
+                to="/login"
+                className="inline-flex rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                Back to sign in
+              </Link>
+              {devVerificationUrl && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-left dark:border-amber-900/70 dark:bg-amber-950/30">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                    Development link
+                  </p>
+                  <a
+                    href={devVerificationUrl}
+                    className="mt-1 block break-all text-xs text-amber-800 underline decoration-amber-400 underline-offset-2 dark:text-amber-300"
+                  >
+                    {devVerificationUrl}
+                  </a>
+                </div>
+              )}
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             {/* Name */}
             <div>
@@ -253,6 +296,7 @@ export function RegisterPage() {
               {isLoading ? 'Creating account…' : 'Create account'}
             </button>
           </form>
+          )}
         </div>
 
         {/* Login link */}

@@ -19,6 +19,14 @@ services:
       DEBUG: "true"
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173","https://vibeboard.orb.local"]'
+      FRONTEND_URL: http://localhost:3000
+      EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: ${EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS:-24}
+      EMAIL_FROM: "${EMAIL_FROM:-VibeBoard <no-reply@vibeboard.local>}"
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
     depends_on:
       redis:
         condition: service_started

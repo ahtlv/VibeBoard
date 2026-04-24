@@ -34,6 +34,17 @@ export interface RegisterResponse extends AuthTokens {
   user: User
 }
 
+export interface RegisterPendingResponse {
+  email: string
+  email_verification_required: boolean
+  message: string
+  dev_verification_url: string | null
+}
+
+export interface VerifyEmailResponse extends AuthTokens {
+  user: User
+}
+
 // ── api ───────────────────────────────────────────────────────────────────────
 
 export const authApi = {
@@ -42,8 +53,12 @@ export const authApi = {
     apiClient.post<LoginResponse>('/auth/login', body),
 
   /** POST /auth/register — новый аккаунт → tokens + user */
-  register: (body: RegisterRequest): Promise<RegisterResponse> =>
-    apiClient.post<RegisterResponse>('/auth/register', body),
+  register: (body: RegisterRequest): Promise<RegisterPendingResponse> =>
+    apiClient.post<RegisterPendingResponse>('/auth/register', body),
+
+  /** GET /auth/verify-email — подтвердить email по одноразовому токену */
+  verifyEmail: (token: string): Promise<VerifyEmailResponse> =>
+    apiClient.get<VerifyEmailResponse>(`/auth/verify-email?token=${encodeURIComponent(token)}`),
 
   /** GET /auth/me — текущий пользователь по access token */
   getMe: (): Promise<User> =>

@@ -38,6 +38,19 @@ class User(Base):
         Text,
         nullable=True,
     )
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    email_verification_token_hash: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
+    email_verification_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     # Subscription plan — дублируем для быстрого доступа без JOIN к subscriptions
     plan: Mapped[str] = mapped_column(

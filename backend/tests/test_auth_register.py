@@ -12,24 +12,22 @@ VALID_PAYLOAD = {
 }
 
 
-async def test_register_returns_201_with_token(client: AsyncClient) -> None:
+async def test_register_returns_201_with_verification_required(client: AsyncClient) -> None:
     response = await client.post(REGISTER_URL, json=VALID_PAYLOAD)
 
     assert response.status_code == 201
     data = response.json()
-    assert data["access_token"]
-    assert data["token_type"] == "bearer"
-    assert data["expires_in"] > 0
+    assert data["email"] == VALID_PAYLOAD["email"]
+    assert data["email_verification_required"] is True
+    assert data["message"]
 
 
-async def test_register_response_contains_correct_user(client: AsyncClient) -> None:
+async def test_register_does_not_return_access_token(client: AsyncClient) -> None:
     response = await client.post(REGISTER_URL, json=VALID_PAYLOAD)
 
-    user = response.json()["user"]
-    assert user["email"] == VALID_PAYLOAD["email"]
-    assert user["name"] == VALID_PAYLOAD["name"]
-    assert user["plan"] == "free"
-    assert user["id"]
+    data = response.json()
+    assert "access_token" not in data
+    assert "user" not in data
 
 
 async def test_register_duplicate_email_returns_409(client: AsyncClient) -> None:
