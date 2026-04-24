@@ -11,3 +11,6 @@ dist/
 .DS_Store
 .venv/
 venv/
+
+# Agent skills tool directories (managed by npx skills add)
+.kiro/
