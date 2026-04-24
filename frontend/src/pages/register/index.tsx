@@ -5,12 +5,14 @@ import { authApi } from '@/shared/api/authApi'
 import { ApiError } from '@/shared/api/client'
 
 interface FormValues {
+  name: string
   email: string
   password: string
   confirmPassword: string
 }
 
 interface FormErrors {
+  name?: string
   email?: string
   password?: string
   confirmPassword?: string
@@ -20,6 +22,12 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validate(values: FormValues): FormErrors {
   const errors: FormErrors = {}
+
+  if (!values.name.trim()) {
+    errors.name = 'Name is required'
+  } else if (values.name.trim().length < 2) {
+    errors.name = 'Name must be at least 2 characters'
+  }
 
   if (!values.email.trim()) {
     errors.email = 'Email is required'
@@ -58,6 +66,7 @@ export function RegisterPage() {
   const { setAuth } = useAuth()
 
   const [values, setValues] = useState<FormValues>({
+    name: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -78,7 +87,11 @@ export function RegisterPage() {
     setIsLoading(true)
 
     try {
-      const result = await authApi.register({ email: values.email, password: values.password })
+      const result = await authApi.register({
+        name: values.name.trim(),
+        email: values.email,
+        password: values.password,
+      })
       setAuth(result.user, result.access_token)
       navigate('/onboarding', { replace: true })
     } catch (err) {
@@ -123,6 +136,33 @@ export function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
+            {/* Name */}
+            <div>
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                autoComplete="name"
+                value={values.name}
+                onChange={handleChange('name')}
+                disabled={isLoading}
+                aria-describedby={errors.name ? 'name-error' : undefined}
+                aria-invalid={!!errors.name}
+                className={inputClass(!!errors.name, isLoading)}
+                placeholder="Your name"
+              />
+              {errors.name && (
+                <p id="name-error" className="mt-1 text-xs text-red-500">
+                  {errors.name}
+                </p>
+              )}
+            </div>
+
             {/* Email */}
             <div>
               <label

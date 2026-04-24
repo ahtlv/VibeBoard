@@ -23,13 +23,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 VibeBoard/
-├── frontend/      # React SPA
-├── backend/       # FastAPI API server
-├── CLAUDE.md      # этот файл — загружается всегда
+├── frontend/           # React SPA
+├── backend/            # FastAPI API server
+├── CLAUDE.md           # этот файл — загружается всегда
 ├── frontend/CLAUDE.md  # frontend-правила — загружается лениво
 ├── backend/CLAUDE.md   # backend-правила — загружается лениво
-└── TZ.md          # Техническое задание
+├── TZ.md               # Техническое задание
+└── .claude/
+    ├── rules/          # правила стиля, тестирования, безопасности
+    └── skills/         # скиллы проекта (единственное место — НЕ .agents/)
+        ├── supabase                      # работа с Supabase MCP
+        ├── supabase-postgres-best-practices  # оптимизация Postgres
+        ├── deploy                        # деплой
+        ├── db-migrate                    # миграции БД
+        └── test-all                      # запуск тестов
 ```
+
+**Скиллы хранятся только в `.claude/skills/`** — папка `.agents/` не используется и не создаётся.
 
 **Frontend** (`frontend/CLAUDE.md`) — архитектура FSD (app / pages / widgets / features / entities / shared). Все запросы инкапсулированы в API-клиенты (authApi, boardsApi, tasksApi и т.д.). Серверный и UI state разделены.
 
