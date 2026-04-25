@@ -6,6 +6,8 @@ import { authRouter } from './routes/auth'
 import { workspacesRouter } from './routes/workspaces'
 import { boardsRouter } from './routes/boards'
 import { columnsRouter } from './routes/columns'
+import { tasksRouter } from './routes/tasks'
+import { checklistItemsRouter } from './routes/checklistItems'
 
 const app = new Hono<AppEnv>()
 
@@ -20,6 +22,8 @@ app.route('/api/v1/auth', authRouter)
 app.route('/api/v1/workspaces', workspacesRouter)
 app.route('/api/v1/boards', boardsRouter)
 app.route('/api/v1/columns', columnsRouter)
+app.route('/api/v1/tasks', tasksRouter)
+app.route('/api/v1', checklistItemsRouter)
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404))
 app.onError((err, c) => {
