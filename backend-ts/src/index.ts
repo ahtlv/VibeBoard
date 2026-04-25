@@ -15,7 +15,7 @@ import { billingRouter } from './routes/billing'
 const app = new Hono<AppEnv>()
 
 app.use('*', cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'],
+  origin: ['http://localhost:3000', 'http://localhost:5173', 'https://vibeboard.6150159.workers.dev'],
   allowHeaders: ['Content-Type', 'Authorization'],
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 }))

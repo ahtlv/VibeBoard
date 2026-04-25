@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "build:all": "sh build.sh",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
