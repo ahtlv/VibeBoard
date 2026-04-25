@@ -1,6 +1,6 @@
 export { LoginPage } from './login'
 export { RegisterPage } from './register'
-export { VerifyEmailPage } from './verify-email'
+export { AuthCallbackPage } from './auth-callback'
 export { OnboardingPage } from './onboarding'
 export { DashboardPage } from './dashboard'
 export { CalendarPage } from './calendar'

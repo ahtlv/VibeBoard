@@ -19,7 +19,7 @@ const NAV_ITEMS = [
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
 
   function handleLogout() {
     logout()
@@ -92,22 +92,34 @@ export function AppShell({ children }: AppShellProps) {
             </ul>
           </nav>
 
-          <div className="border-t border-gray-200 px-3 py-4 dark:border-gray-800">
+          <div className="border-t border-gray-200 dark:border-gray-800 px-3 py-3 space-y-2">
+            {user && (
+              <div className="flex items-center gap-3 py-1">
+                <div
+                  aria-hidden="true"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                >
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {user.name}
+                </p>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={handleLogout}
               className="flex w-full items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition-colors hover:border-red-300 hover:bg-red-100 hover:text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/60 dark:hover:text-red-300"
             >
               <span>Logout</span>
-              <span aria-hidden="true" className="text-base leading-none">
-                ↪
-              </span>
+              <span aria-hidden="true" className="text-base leading-none">↪</span>
             </button>
           </div>
         </aside>
 
         {/* Main content */}
-        <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-4">{children}</main>
       </div>
     </div>
   )

@@ -1,6 +1,5 @@
 export { apiClient, setTokenAccessor, ApiError, NetworkError } from './client'
 export { authApi } from './authApi'
-export type { LoginRequest, RegisterRequest, LoginResponse, RegisterResponse, AuthTokens } from './authApi'
 export { boardsApi } from './boardsApi'
 export type { CreateBoardRequest, CreateColumnRequest, BoardSummary } from './boardsApi'
 export { tasksApi } from './tasksApi'

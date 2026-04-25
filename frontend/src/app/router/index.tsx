@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import {
   AnalyticsPage,
+  AuthCallbackPage,
   BillingPage,
   CalendarPage,
   DashboardPage,
@@ -8,7 +9,6 @@ import {
   OnboardingPage,
   RegisterPage,
   SettingsPage,
-  VerifyEmailPage,
   WorkspacePage,
 } from '@/pages'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -19,7 +19,7 @@ export function AppRouter() {
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>

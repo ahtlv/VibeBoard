@@ -25,6 +25,10 @@ vi.mock('@/shared/api/authApi', () => ({
 // Sonner toast — не нужен в DOM-тестах
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
+vi.mock('@/shared/ui/ThemeToggle', () => ({
+  ThemeToggle: () => null,
+}))
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function renderLoginPage() {

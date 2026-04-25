@@ -61,6 +61,14 @@ class WorkspaceRepository:
 
         return workspace
 
+    async def list_members(self, workspace_id: uuid.UUID) -> list[WorkspaceMember]:
+        result = await self._db.execute(
+            select(WorkspaceMember)
+            .where(WorkspaceMember.workspace_id == workspace_id)
+            .order_by(WorkspaceMember.joined_at)
+        )
+        return list(result.scalars().all())
+
     async def get_member(
         self, workspace_id: uuid.UUID, user_id: uuid.UUID
     ) -> Optional[WorkspaceMember]:

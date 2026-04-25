@@ -1,7 +1,4 @@
-from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-_INSECURE_JWT_SECRET = "change-me-in-production"
 
 
 class Settings(BaseSettings):
@@ -9,16 +6,16 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # App
     APP_ENV: str = "development"
     DEBUG: bool = True
 
-    # JWT
-    JWT_SECRET: str = _INSECURE_JWT_SECRET
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    # Supabase
+    SUPABASE_URL: str = ""
+    SUPABASE_JWT_SECRET: str = ""  # Project Settings → API → JWT Settings
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/vibeboard"
@@ -32,31 +29,11 @@ class Settings(BaseSettings):
     # Frontend base URL — used for Stripe redirect URLs
     FRONTEND_URL: str = "http://localhost:5173"
 
-    # Email verification
-    EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = 24
-    EMAIL_FROM: str = "VibeBoard <no-reply@vibeboard.local>"
-    SMTP_HOST: str = ""
-    SMTP_PORT: int = 587
-    SMTP_USERNAME: str = ""
-    SMTP_PASSWORD: str = ""
-    SMTP_USE_TLS: bool = True
-
     # Stripe
     STRIPE_SECRET_KEY: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
     STRIPE_PRICE_ID_PRO: str = ""
     STRIPE_PRICE_ID_TEAM: str = ""
-
-    @model_validator(mode="after")
-    def _check_production_secrets(self) -> "Settings":
-        if self.APP_ENV == "production":
-            if self.JWT_SECRET == _INSECURE_JWT_SECRET:
-                raise ValueError("JWT_SECRET must be set to a secure value in production")
-            if not self.STRIPE_SECRET_KEY:
-                raise ValueError("STRIPE_SECRET_KEY must be set in production")
-            if not self.STRIPE_WEBHOOK_SECRET:
-                raise ValueError("STRIPE_WEBHOOK_SECRET must be set in production")
-        return self
 
 
 settings = Settings()

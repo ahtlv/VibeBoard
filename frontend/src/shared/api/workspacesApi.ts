@@ -9,6 +9,16 @@ export interface WorkspaceResponse {
   updated_at: string
 }
 
+export interface WorkspaceMember {
+  id: string
+  user_id: string
+  name: string
+  email: string
+  avatar_url: string | null
+  role: 'owner' | 'admin' | 'member'
+  joined_at: string
+}
+
 export interface InvitationResponse {
   id: string
   workspace_id: string
@@ -28,6 +38,10 @@ export const workspacesApi = {
   /** POST /workspaces — создать новый workspace */
   createWorkspace: (body: { name: string; description?: string }): Promise<WorkspaceResponse> =>
     apiClient.post<WorkspaceResponse>('/workspaces', body),
+
+  /** GET /workspaces/:id/members — список участников */
+  listMembers: (workspaceId: string): Promise<WorkspaceMember[]> =>
+    apiClient.get<WorkspaceMember[]>(`/workspaces/${workspaceId}/members`),
 
   /** POST /workspaces/:id/invite — пригласить участника */
   invite: (

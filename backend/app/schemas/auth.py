@@ -1,34 +1,8 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel
 
-
-# ── requests ──────────────────────────────────────────────────────────────────
-
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
-    name: Optional[str] = Field(default=None, max_length=255)
-
-    @field_validator("password")
-    @classmethod
-    def password_not_blank(cls, v: str) -> str:
-        if v.strip() == "":
-            raise ValueError("Password must not be blank")
-        return v
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=1, max_length=128)
-
-
-class RefreshRequest(BaseModel):
-    refresh_token: str = Field(min_length=1)
-
-
-# ── responses ─────────────────────────────────────────────────────────────────
 
 class UserSettingsResponse(BaseModel):
     theme: str
@@ -53,7 +27,6 @@ class UserResponse(BaseModel):
 
     @classmethod
     def from_orm_user(cls, user: object) -> "UserResponse":
-        """Собирает UserResponse из ORM-модели User, разворачивая settings_* поля."""
         from app.models.user import User as UserModel
         u: UserModel = user  # type: ignore[assignment]
         return cls(
@@ -61,7 +34,7 @@ class UserResponse(BaseModel):
             email=u.email,
             name=u.name,
             avatar_url=u.avatar_url,
-            is_email_verified=u.email_verified_at is not None,
+            is_email_verified=True,  # Supabase enforces email verification before session is issued
             plan=u.plan,
             settings=UserSettingsResponse(
                 theme=u.settings_theme,
@@ -71,28 +44,3 @@ class UserResponse(BaseModel):
             ),
             created_at=u.created_at,
         )
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int  # секунды
-
-
-class LoginResponse(TokenResponse):
-    user: UserResponse
-
-
-class RegisterResponse(TokenResponse):
-    user: UserResponse
-
-
-class RegisterPendingResponse(BaseModel):
-    email: str
-    email_verification_required: bool = True
-    message: str
-    dev_verification_url: Optional[str] = None
-
-
-class VerifyEmailResponse(TokenResponse):
-    user: UserResponse

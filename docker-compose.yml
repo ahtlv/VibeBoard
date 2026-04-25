@@ -17,16 +17,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       APP_ENV: development
       DEBUG: "true"
-      JWT_SECRET: ${JWT_SECRET}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
       CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173","https://vibeboard.orb.local"]'
       FRONTEND_URL: http://localhost:3000
-      EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: ${EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS:-24}
-      EMAIL_FROM: "${EMAIL_FROM:-VibeBoard <no-reply@vibeboard.local>}"
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USERNAME: ${SMTP_USERNAME:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
     depends_on:
       redis:
         condition: service_started
@@ -36,6 +30,8 @@ services:
       context: ./frontend
       args:
         VITE_API_URL: http://localhost:8000/api/v1
+        VITE_SUPABASE_URL: ${SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4anpha21lbG1vcW16dXh2d3NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5ODI3OTMsImV4cCI6MjA5MjU1ODc5M30.y8zl0PUmo4Ya77fswF_HWWHfGNzXN45oN67Fe6RUq9k}
     container_name: vibeboard
     ports:
       - "3000:80"

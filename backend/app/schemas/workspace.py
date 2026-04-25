@@ -35,6 +35,32 @@ class WorkspaceResponse(BaseModel):
         )
 
 
+# ── members ───────────────────────────────────────────────────────────────────
+
+class WorkspaceMemberResponse(BaseModel):
+    id: str
+    user_id: str
+    name: str
+    email: str
+    avatar_url: Optional[str]
+    role: str
+    joined_at: datetime
+
+    @classmethod
+    def from_orm(cls, wm: object) -> "WorkspaceMemberResponse":
+        from app.models.workspace_member import WorkspaceMember as WM
+        m: WM = wm  # type: ignore[assignment]
+        return cls(
+            id=str(m.id),
+            user_id=str(m.user_id),
+            name=m.user.name,
+            email=m.user.email,
+            avatar_url=m.user.avatar_url,
+            role=m.role,
+            joined_at=m.joined_at,
+        )
+
+
 # ── invitation ────────────────────────────────────────────────────────────────
 
 class InviteRequest(BaseModel):

@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user, get_db
 from app.models.user import User
 from app.repositories.workspace import WorkspaceRepository
-from app.schemas.workspace import InvitationResponse, InviteRequest, WorkspaceCreate, WorkspaceResponse
+from app.schemas.workspace import InvitationResponse, InviteRequest, WorkspaceCreate, WorkspaceMemberResponse, WorkspaceResponse
 from app.services.workspace import (
     AlreadyInvitedError,
     AlreadyMemberError,
@@ -40,6 +40,20 @@ async def create_workspace(
     service = WorkspaceService(db)
     workspace = await service.create(body, owner_id=current_user.id)
     return WorkspaceResponse.from_orm(workspace)
+
+
+@router.get("/{workspace_id}/members", response_model=list[WorkspaceMemberResponse])
+async def list_members(
+    workspace_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[WorkspaceMemberResponse]:
+    repo = WorkspaceRepository(db)
+    member = await repo.get_member(uuid.UUID(workspace_id), current_user.id)
+    if member is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a member of this workspace")
+    members = await repo.list_members(uuid.UUID(workspace_id))
+    return [WorkspaceMemberResponse.from_orm(m) for m in members]
 
 
 @router.post(

@@ -6,7 +6,6 @@ export function ProtectedRoute() {
   const location = useLocation()
 
   if (status === 'idle') {
-    // Auth state not yet resolved — render nothing while store initializes
     return null
   }
 

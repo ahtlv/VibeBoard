@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '@/shared/api/authApi'
-import { ApiError } from '@/shared/api/client'
 import { ThemeToggle } from '@/shared/ui/ThemeToggle'
 
 interface FormValues {
@@ -22,31 +21,26 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validate(values: FormValues): FormErrors {
   const errors: FormErrors = {}
-
   if (!values.name.trim()) {
     errors.name = 'Name is required'
   } else if (values.name.trim().length < 2) {
     errors.name = 'Name must be at least 2 characters'
   }
-
   if (!values.email.trim()) {
     errors.email = 'Email is required'
   } else if (!EMAIL_REGEX.test(values.email)) {
     errors.email = 'Enter a valid email address'
   }
-
   if (!values.password) {
     errors.password = 'Password is required'
   } else if (values.password.length < 8) {
     errors.password = 'Password must be at least 8 characters'
   }
-
   if (!values.confirmPassword) {
     errors.confirmPassword = 'Please confirm your password'
   } else if (values.password && values.confirmPassword !== values.password) {
     errors.confirmPassword = 'Passwords do not match'
   }
-
   return errors
 }
 
@@ -62,16 +56,11 @@ const inputClass = (hasError: boolean, disabled: boolean) =>
   ].join(' ')
 
 export function RegisterPage() {
-  const [values, setValues] = useState<FormValues>({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  })
+  const navigate = useNavigate()
+  const [values, setValues] = useState<FormValues>({ name: '', email: '', password: '', confirmPassword: '' })
   const [errors, setErrors] = useState<FormErrors>({})
   const [apiError, setApiError] = useState<string | null>(null)
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
-  const [devVerificationUrl, setDevVerificationUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -86,21 +75,23 @@ export function RegisterPage() {
     setIsLoading(true)
 
     try {
-      const result = await authApi.register({
-        name: values.name.trim(),
-        email: values.email,
-        password: values.password,
-      })
-      setRegisteredEmail(result.email)
-      setDevVerificationUrl(result.dev_verification_url)
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        setApiError('An account with this email already exists')
-      } else if (err instanceof ApiError && err.status === 503) {
-        setApiError('Email delivery is not configured. Please contact the site owner.')
-      } else {
-        setApiError('Something went wrong. Please try again.')
+      const { data, error } = await authApi.register(values.email, values.password, values.name.trim())
+      if (error) {
+        if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+          setApiError('An account with this email already exists')
+        } else {
+          setApiError(error.message)
+        }
+        return
       }
+      if (data.session) {
+        // Email confirmation disabled in Supabase — user is logged in immediately
+        navigate('/onboarding', { replace: true })
+      } else {
+        setRegisteredEmail(values.email)
+      }
+    } catch {
+      setApiError('Something went wrong. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -121,7 +112,6 @@ export function RegisterPage() {
       </div>
 
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="mb-8 text-center">
           <span className="text-2xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">
             VibeBoard
@@ -131,9 +121,7 @@ export function RegisterPage() {
           </h1>
         </div>
 
-        {/* Card */}
         <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 shadow-sm">
-          {/* API-level error */}
           {apiError && (
             <div className="mb-4 rounded-md bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 px-4 py-3">
               <p className="text-sm text-red-600 dark:text-red-400">{apiError}</p>
@@ -146,15 +134,11 @@ export function RegisterPage() {
                 ✓
               </div>
               <div>
-                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Check your email
-                </h2>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Check your email</h2>
                 <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
                   We sent a confirmation link to{' '}
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
-                    {registeredEmail}
-                  </span>
-                  . Open it to activate your account and enter VibeBoard.
+                  <span className="font-medium text-gray-700 dark:text-gray-300">{registeredEmail}</span>.
+                  Open it to activate your account.
                 </p>
               </div>
               <Link
@@ -163,149 +147,43 @@ export function RegisterPage() {
               >
                 Back to sign in
               </Link>
-              {devVerificationUrl && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-left dark:border-amber-900/70 dark:bg-amber-950/30">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                    Development link
-                  </p>
-                  <a
-                    href={devVerificationUrl}
-                    className="mt-1 block break-all text-xs text-amber-800 underline decoration-amber-400 underline-offset-2 dark:text-amber-300"
-                  >
-                    {devVerificationUrl}
-                  </a>
-                </div>
-              )}
             </div>
           ) : (
-          <form onSubmit={handleSubmit} noValidate className="space-y-5">
-            {/* Name */}
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                autoComplete="name"
-                value={values.name}
-                onChange={handleChange('name')}
-                disabled={isLoading}
-                aria-describedby={errors.name ? 'name-error' : undefined}
-                aria-invalid={!!errors.name}
-                className={inputClass(!!errors.name, isLoading)}
-                placeholder="Your name"
-              />
-              {errors.name && (
-                <p id="name-error" className="mt-1 text-xs text-red-500">
-                  {errors.name}
-                </p>
-              )}
-            </div>
+            <form onSubmit={handleSubmit} noValidate className="space-y-5">
+              {(['name', 'email', 'password', 'confirmPassword'] as const).map((field) => (
+                <div key={field}>
+                  <label htmlFor={field} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {field === 'confirmPassword' ? 'Confirm password' : field.charAt(0).toUpperCase() + field.slice(1)}
+                  </label>
+                  <input
+                    id={field}
+                    type={field === 'email' ? 'email' : field.includes('assword') ? 'password' : 'text'}
+                    autoComplete={field === 'email' ? 'email' : field === 'name' ? 'name' : 'new-password'}
+                    value={values[field]}
+                    onChange={handleChange(field)}
+                    disabled={isLoading}
+                    aria-invalid={!!errors[field]}
+                    className={inputClass(!!errors[field], isLoading)}
+                    placeholder={field === 'email' ? 'you@example.com' : field.includes('assword') ? '••••••••' : 'Your name'}
+                  />
+                  {errors[field] && <p className="mt-1 text-xs text-red-500">{errors[field]}</p>}
+                </div>
+              ))}
 
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={values.email}
-                onChange={handleChange('email')}
+              <button
+                type="submit"
                 disabled={isLoading}
-                aria-describedby={errors.email ? 'email-error' : undefined}
-                aria-invalid={!!errors.email}
-                className={inputClass(!!errors.email, isLoading)}
-                placeholder="you@example.com"
-              />
-              {errors.email && (
-                <p id="email-error" className="mt-1 text-xs text-red-500">
-                  {errors.email}
-                </p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                value={values.password}
-                onChange={handleChange('password')}
-                disabled={isLoading}
-                aria-describedby={errors.password ? 'password-error' : undefined}
-                aria-invalid={!!errors.password}
-                className={inputClass(!!errors.password, isLoading)}
-                placeholder="••••••••"
-              />
-              {errors.password && (
-                <p id="password-error" className="mt-1 text-xs text-red-500">
-                  {errors.password}
-                </p>
-              )}
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                Confirm password
-              </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                value={values.confirmPassword}
-                onChange={handleChange('confirmPassword')}
-                disabled={isLoading}
-                aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
-                aria-invalid={!!errors.confirmPassword}
-                className={inputClass(!!errors.confirmPassword, isLoading)}
-                placeholder="••••••••"
-              />
-              {errors.confirmPassword && (
-                <p id="confirmPassword-error" className="mt-1 text-xs text-red-500">
-                  {errors.confirmPassword}
-                </p>
-              )}
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Creating account…' : 'Create account'}
-            </button>
-          </form>
+                {isLoading ? 'Creating account…' : 'Create account'}
+              </button>
+            </form>
           )}
         </div>
 
-        {/* Login link */}
         <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
           Already have an account?{' '}
-          <Link
-            to="/login"
-            className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
-          >
+          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
             Sign in
           </Link>
         </p>

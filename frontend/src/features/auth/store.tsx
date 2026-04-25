@@ -1,38 +1,32 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
+import { supabase } from '@/shared/api/supabaseClient'
 import { setTokenAccessor } from '@/shared/api/client'
+import { authApi } from '@/shared/api/authApi'
 import type { User } from '@/entities/user/types'
 
 export type AuthStatus = 'idle' | 'authenticated' | 'unauthenticated'
 
 interface AuthState {
   user: User | null
-  accessToken: string | null
   status: AuthStatus
 }
 
 type AuthAction =
-  | { type: 'SET_AUTH'; user: User; accessToken: string }
+  | { type: 'SET_USER'; user: User }
   | { type: 'LOGOUT' }
 
 interface AuthContextValue extends AuthState {
-  setAuth: (user: User, accessToken: string) => void
   logout: () => void
 }
 
-const TOKEN_KEY = 'vb_access_token'
-
-const initialState: AuthState = {
-  user: null,
-  accessToken: null,
-  status: 'idle',
-}
+const initialState: AuthState = { user: null, status: 'idle' }
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
-    case 'SET_AUTH':
-      return { user: action.user, accessToken: action.accessToken, status: 'authenticated' }
+    case 'SET_USER':
+      return { user: action.user, status: 'authenticated' }
     case 'LOGOUT':
-      return { user: null, accessToken: null, status: 'unauthenticated' }
+      return { user: null, status: 'unauthenticated' }
     default:
       return state
   }
@@ -40,34 +34,43 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+// Module-level token cache — updated synchronously on every auth state change
+let _supabaseToken: string | null = null
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
-  // Регистрируем accessor токена в apiClient (без циклических зависимостей)
   useEffect(() => {
-    setTokenAccessor(() => localStorage.getItem(TOKEN_KEY))
-  }, [])
+    // Register a sync token accessor so apiClient always sends the latest token
+    setTokenAccessor(() => _supabaseToken)
 
-  // При маунте — если нет токена в localStorage, сразу переходим в unauthenticated.
-  // Если токен есть — переходим в unauthenticated тоже: user не загружен,
-  // /auth/me будет добавлен в refresh token flow. После login setAuth
-  // восстановит состояние с актуальным user объектом.
-  useEffect(() => {
-    dispatch({ type: 'LOGOUT' })
-  }, [])
+    // Subscribe to Supabase auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      _supabaseToken = session?.access_token ?? null
 
-  function setAuth(user: User, accessToken: string) {
-    localStorage.setItem(TOKEN_KEY, accessToken)
-    dispatch({ type: 'SET_AUTH', user, accessToken })
-  }
+      if (!session) {
+        dispatch({ type: 'LOGOUT' })
+        return
+      }
+
+      // Load our public.users profile from the FastAPI backend
+      authApi.getMe()
+        .then((user) => dispatch({ type: 'SET_USER', user }))
+        .catch(() => dispatch({ type: 'LOGOUT' }))
+    })
+
+    // Check for an existing session on mount (triggers onAuthStateChange with INITIAL_SESSION)
+    supabase.auth.getSession()
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   function logout() {
-    localStorage.removeItem(TOKEN_KEY)
-    dispatch({ type: 'LOGOUT' })
+    supabase.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={{ ...state, setAuth, logout }}>
+    <AuthContext.Provider value={{ ...state, logout }}>
       {children}
     </AuthContext.Provider>
   )

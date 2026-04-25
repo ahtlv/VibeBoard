@@ -2,79 +2,8 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { AppShell } from '@/shared/ui/AppShell'
 import { ApiError } from '@/shared/api/client'
-import { workspacesApi } from '@/shared/api/workspacesApi'
+import { workspacesApi, type WorkspaceMember } from '@/shared/api/workspacesApi'
 import type { WorkspaceRole } from '@/shared/types/workspace'
-
-// ── types ─────────────────────────────────────────────────────────────────────
-
-interface WorkspaceMember {
-  id: string
-  name: string
-  email: string
-  role: WorkspaceRole
-  avatarUrl: string | null
-  joinedAt: string
-}
-
-interface MockTask {
-  id: string
-  title: string
-  assigneeId: string
-  transferredFrom?: string // name of previous assignee
-}
-
-// ── mock data ─────────────────────────────────────────────────────────────────
-
-const INITIAL_MEMBERS: WorkspaceMember[] = [
-  {
-    id: 'user-1',
-    name: 'Anatoli',
-    email: 'anatoli@vibeboard.app',
-    role: 'owner',
-    avatarUrl: null,
-    joinedAt: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'user-0',
-    name: 'Anatoli Hotulev',
-    email: 'anatoli.hotulev@gmail.com',
-    role: 'owner',
-    avatarUrl: null,
-    joinedAt: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'user-2',
-    name: 'Maria Ivanova',
-    email: 'maria@vibeboard.app',
-    role: 'admin',
-    avatarUrl: null,
-    joinedAt: '2026-02-15T00:00:00Z',
-  },
-  {
-    id: 'user-3',
-    name: 'Alex Petrov',
-    email: 'alex@vibeboard.app',
-    role: 'member',
-    avatarUrl: null,
-    joinedAt: '2026-03-10T00:00:00Z',
-  },
-  {
-    id: 'user-4',
-    name: 'Dana Kim',
-    email: 'dana@vibeboard.app',
-    role: 'member',
-    avatarUrl: null,
-    joinedAt: '2026-04-01T00:00:00Z',
-  },
-]
-
-const INITIAL_TASKS: MockTask[] = [
-  { id: 't-1', title: 'Review Q1 report', assigneeId: 'user-2' },
-  { id: 't-2', title: 'Update API docs', assigneeId: 'user-2' },
-  { id: 't-3', title: 'Fix login bug', assigneeId: 'user-3' },
-  { id: 't-4', title: 'Deploy staging', assigneeId: 'user-3' },
-  { id: 't-5', title: 'Design onboarding flow', assigneeId: 'user-4' },
-]
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -157,13 +86,11 @@ function TransferModal({ removingMember, candidates, taskCount, onConfirm, onCan
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-// Current user is owner (hardcoded for mock — в реальности берётся из auth store)
-const CURRENT_USER_ROLE: WorkspaceRole = 'owner'
-
 export function WorkspacePage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
-  const [members, setMembers] = useState<WorkspaceMember[]>(INITIAL_MEMBERS)
-  const [tasks, setTasks] = useState<MockTask[]>(INITIAL_TASKS)
+  const [members, setMembers] = useState<WorkspaceMember[]>([])
+  const [currentUserRole, setCurrentUserRole] = useState<WorkspaceRole>('member')
+  const [loading, setLoading] = useState(true)
   const [showInviteForm, setShowInviteForm] = useState(false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'member' | 'admin'>('member')
@@ -172,9 +99,23 @@ export function WorkspacePage() {
 
   useEffect(() => {
     let cancelled = false
-    workspacesApi.listWorkspaces().then((list) => {
-      if (!cancelled && list.length > 0) setWorkspaceId(list[0].id)
-    })
+    async function load() {
+      try {
+        const workspaces = await workspacesApi.listWorkspaces()
+        if (cancelled || workspaces.length === 0) return
+        const ws = workspaces[0]
+        setWorkspaceId(ws.id)
+        const list = await workspacesApi.listMembers(ws.id)
+        if (cancelled) return
+        setMembers(list)
+        // Определяем роль текущего пользователя по owner_id воркспейса
+        const me = list.find((m) => m.user_id === ws.owner_id)
+        if (me) setCurrentUserRole(me.role)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    load()
     return () => { cancelled = true }
   }, [])
 
@@ -206,32 +147,11 @@ export function WorkspacePage() {
     setPendingRemove(member)
   }
 
-  function handleTransferConfirm(transferToId: string) {
+  function handleTransferConfirm(_transferToId: string) {
     if (!pendingRemove) return
     const removedName = pendingRemove.name
-    const transferTarget = members.find((m) => m.id === transferToId)
-
-    // Transfer tasks
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.assigneeId === pendingRemove.id
-          ? { ...t, assigneeId: transferToId, transferredFrom: removedName }
-          : t
-      )
-    )
-
-    // Remove member
     setMembers((prev) => prev.filter((m) => m.id !== pendingRemove.id))
-
-    const transferredCount = tasks.filter((t) => t.assigneeId === pendingRemove.id).length
-    if (transferredCount > 0 && transferTarget) {
-      toast.success(
-        `${removedName} removed. ${transferredCount} task${transferredCount !== 1 ? 's' : ''} transferred to ${transferTarget.name}.`
-      )
-    } else {
-      toast.success(`${removedName} has been removed from the workspace.`)
-    }
-
+    toast.success(`${removedName} has been removed from the workspace.`)
     setPendingRemove(null)
   }
 
@@ -239,9 +159,13 @@ export function WorkspacePage() {
     ? members.filter((m) => m.id !== pendingRemove.id)
     : []
 
-  const pendingTaskCount = pendingRemove
-    ? tasks.filter((t) => t.assigneeId === pendingRemove.id).length
-    : 0
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center py-24 text-sm text-gray-400">Loading…</div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell>
@@ -249,7 +173,7 @@ export function WorkspacePage() {
         <TransferModal
           removingMember={pendingRemove}
           candidates={transferCandidates}
-          taskCount={pendingTaskCount}
+          taskCount={0}
           onConfirm={handleTransferConfirm}
           onCancel={() => setPendingRemove(null)}
         />
@@ -360,8 +284,7 @@ export function WorkspacePage() {
               </li>
             )}
             {members.map((member) => {
-              const memberTasks = tasks.filter((t) => t.assigneeId === member.id)
-              const canRemove = CURRENT_USER_ROLE === 'owner' && member.role !== 'owner'
+              const canRemove = currentUserRole === 'owner' && member.role !== 'owner'
               return (
                 <li
                   key={member.id}
@@ -374,16 +297,9 @@ export function WorkspacePage() {
                         {initials(member.name)}
                       </span>
                     </div>
-                    <div className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {member.name}
-                      </span>
-                      {memberTasks.length > 0 && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">
-                          {memberTasks.length} task{memberTasks.length !== 1 ? 's' : ''}
-                        </span>
-                      )}
-                    </div>
+                    <span className="min-w-0 block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {member.name}
+                    </span>
                   </div>
 
                   {/* Email */}
@@ -398,7 +314,7 @@ export function WorkspacePage() {
 
                   {/* Joined date */}
                   <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
-                    {formatDate(member.joinedAt)}
+                    {formatDate(member.joined_at)}
                   </span>
 
                   {/* Remove button */}
@@ -423,30 +339,6 @@ export function WorkspacePage() {
           </ul>
         </div>
 
-        {/* Transferred tasks panel */}
-        {tasks.some((t) => t.transferredFrom) && (
-          <div className="mt-6 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 p-4">
-            <h2 className="mb-3 text-sm font-semibold text-amber-800 dark:text-amber-400">
-              Transferred tasks
-            </h2>
-            <ul className="space-y-2">
-              {tasks.filter((t) => t.transferredFrom).map((t) => {
-                const assignee = members.find((m) => m.id === t.assigneeId)
-                return (
-                  <li key={t.id} className="flex items-center gap-3 text-sm">
-                    <span className="rounded-full bg-amber-200 dark:bg-amber-800/60 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-300">
-                      transferred from {t.transferredFrom}
-                    </span>
-                    <span className="text-gray-700 dark:text-gray-300">{t.title}</span>
-                    {assignee && (
-                      <span className="text-gray-400 dark:text-gray-500">→ {assignee.name}</span>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        )}
       </div>
     </AppShell>
   )
