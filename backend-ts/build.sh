@@ -19,4 +19,12 @@ cp -r ../frontend/dist/* public/
 echo "Installing backend dependencies..."
 npm ci
 
+echo "Setting Worker secrets..."
+if [ -n "$SUPABASE_SERVICE_KEY" ]; then
+  echo "$SUPABASE_SERVICE_KEY" | npx wrangler secret put SUPABASE_SERVICE_KEY
+  echo "SUPABASE_SERVICE_KEY set."
+else
+  echo "WARNING: SUPABASE_SERVICE_KEY not found in environment!"
+fi
+
 echo "Build complete!"
