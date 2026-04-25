@@ -4,6 +4,8 @@ import type { AppEnv } from './types'
 import { healthRouter } from './routes/health'
 import { authRouter } from './routes/auth'
 import { workspacesRouter } from './routes/workspaces'
+import { boardsRouter } from './routes/boards'
+import { columnsRouter } from './routes/columns'
 
 const app = new Hono<AppEnv>()
 
@@ -16,6 +18,8 @@ app.use('*', cors({
 app.route('/api/v1/health', healthRouter)
 app.route('/api/v1/auth', authRouter)
 app.route('/api/v1/workspaces', workspacesRouter)
+app.route('/api/v1/boards', boardsRouter)
+app.route('/api/v1/columns', columnsRouter)
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404))
 app.onError((err, c) => {
