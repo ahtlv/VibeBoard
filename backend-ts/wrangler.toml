@@ -1,0 +1,8 @@
+name = "vibeboard-api"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+SUPABASE_URL = "https://axjzakmelmoqmzuxvwsa.supabase.co"
+FRONTEND_URL = "http://localhost:3000"
