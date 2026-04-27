@@ -408,8 +408,6 @@ function removeTaskFromColumn(board: Board, columnId: string, taskId: string): B
 }
 
 // ── AddColumnButton ───────────────────────────────────────────────────────────
-// В спокойном состоянии выглядит как инпут с placeholder-текстом.
-// При клике оживает: синяя обводка + кнопки подтверждения.
 
 function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
   const [isEditing, setIsEditing] = useState(false)
@@ -439,20 +437,19 @@ function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
     if (e.key === 'Escape') cancel()
   }
 
-  // Общие стили инпута — одинаковые в обоих состояниях
-  const inputLook = 'w-64 shrink-0 rounded-xl border bg-gray-100 dark:bg-gray-800 px-3 py-2.5 text-sm transition-colors'
+  const card = 'w-64 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900'
   const btnBase = 'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors'
 
   if (isEditing) {
     return (
-      <div className="flex w-64 shrink-0 flex-col gap-2">
+      <div className={`${card} p-3 flex flex-col gap-2`}>
         <input
           ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Column name…"
-          className={`${inputLook} border-indigo-500 dark:border-indigo-400 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none ring-1 ring-indigo-500 dark:ring-indigo-400`}
+          className="w-full rounded-md border border-indigo-500 dark:border-indigo-400 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none ring-1 ring-indigo-500 dark:ring-indigo-400"
         />
         <div className="flex gap-2">
           <button
@@ -476,7 +473,7 @@ function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
   return (
     <button
       onClick={open}
-      className={`${inputLook} border-gray-200 dark:border-gray-700 text-left text-gray-400 dark:text-gray-500 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-gray-500 dark:hover:text-gray-400`}
+      className={`${card} flex items-center px-3 py-2.5 text-sm font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors`}
     >
       + Add column
     </button>
