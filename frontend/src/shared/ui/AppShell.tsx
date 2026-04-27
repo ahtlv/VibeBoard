@@ -2,13 +2,13 @@ import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/store'
 import { ThemeToggle } from './ThemeToggle'
+import { BoardNav } from './BoardNav'
 
 interface AppShellProps {
   children: ReactNode
 }
 
 const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Dashboard' },
   { to: '/calendar', label: 'Calendar' },
   { to: '/analytics', label: 'Analytics' },
   { to: '/workspace', label: 'Members' },
@@ -71,6 +71,7 @@ export function AppShell({ children }: AppShellProps) {
         >
           <nav className="flex-1 px-3 py-4">
             <ul className="space-y-1" role="list">
+              <BoardNav onClose={() => setSidebarOpen(false)} />
               {NAV_ITEMS.map(({ to, label }) => (
                 <li key={to}>
                   <NavLink

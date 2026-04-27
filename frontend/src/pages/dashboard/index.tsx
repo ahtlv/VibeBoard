@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/shared/ui/AppShell'
 import { BoardHeader, KanbanColumn, TaskModal } from '@/widgets'
 import { boardsApi, workspacesApi } from '@/shared/api'
@@ -20,6 +21,10 @@ export function DashboardPage() {
   const [moveError, setMoveError] = useState<string | null>(null)
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [creatingWorkspace, setCreatingWorkspace] = useState(false)
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const boardIdFromUrl = searchParams.get('board')
+  const initialBoardId = useRef(boardIdFromUrl)
 
   // Загружаем workspace → boards при маунте
   useEffect(() => {
@@ -49,9 +54,15 @@ export function DashboardPage() {
           return
         }
 
-        setActiveBoardId(boards[0].id)
-        setBoard(summaryToBoard(boards[0]))
+        const startId = initialBoardId.current && boards.find(b => b.id === initialBoardId.current)
+          ? initialBoardId.current
+          : boards[0].id
+        setActiveBoardId(startId)
+        setBoard(summaryToBoard(boards.find(b => b.id === startId)!))
         setLoadState('ready')
+        if (!initialBoardId.current) {
+          navigate(`/dashboard?board=${startId}`, { replace: true })
+        }
       } catch {
         if (!cancelled) setLoadState('error')
       }
@@ -90,12 +101,15 @@ export function DashboardPage() {
     }
   }
 
-  // При смене активной доски обновляем board из summaries
+  // При смене URL (клик в сайдбаре) или загрузке summaries — обновляем активную доску
   useEffect(() => {
-    if (!activeBoardId) return
-    const summary = boardSummaries.find((b) => b.id === activeBoardId)
-    if (summary) setBoard(summaryToBoard(summary))
-  }, [activeBoardId, boardSummaries])
+    if (boardSummaries.length === 0) return
+    const target = boardSummaries.find((b) => b.id === boardIdFromUrl) ?? boardSummaries[0]
+    if (target.id !== activeBoardId) {
+      setActiveBoardId(target.id)
+      setBoard(summaryToBoard(target))
+    }
+  }, [boardIdFromUrl, boardSummaries])
 
   async function handleAddTask(columnId: string, title: string) {
     if (!board || !activeBoardId) return
@@ -247,26 +261,6 @@ export function DashboardPage() {
                 onAddColumn={() => {/* TODO: создать колонку */}}
                 onAddTask={() => {/* TODO: создать задачу */}}
               />
-
-              {/* Board selector strip (если досок > 1) */}
-              {boardSummaries.length > 1 && (
-                <div className="flex gap-2 px-1 pb-2 overflow-x-auto">
-                  {boardSummaries.map((b) => (
-                    <button
-                      key={b.id}
-                      onClick={() => setActiveBoardId(b.id)}
-                      className={[
-                        'shrink-0 rounded-md px-3 py-1 text-xs font-medium transition-colors',
-                        b.id === activeBoardId
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700',
-                      ].join(' ')}
-                    >
-                      {b.title}
-                    </button>
-                  ))}
-                </div>
-              )}
 
               {/* Columns area */}
               <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
