@@ -18,6 +18,13 @@ export const authApi = {
   login: (email: string, password: string) =>
     supabase.auth.signInWithPassword({ email, password }),
 
+  /** Google OAuth sign-in */
+  loginWithGoogle: () =>
+    supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    }),
+
   /** Sign out — clears Supabase session */
   logout: () => supabase.auth.signOut(),
 
