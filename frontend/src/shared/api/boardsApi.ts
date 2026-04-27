@@ -9,6 +9,11 @@ export interface CreateBoardRequest {
   description?: string
 }
 
+export interface UpdateBoardRequest {
+  title?: string
+  description?: string | null
+}
+
 export interface CreateColumnRequest {
   title: string
 }
@@ -45,7 +50,11 @@ export const boardsApi = {
   createColumn: (boardId: string, body: CreateColumnRequest): Promise<Column> =>
     apiClient.post<Column>('/columns', { board_id: boardId, title: body.title }),
 
-  /** DELETE /boards/:boardId — удалить доску (не реализован на backend) */
+  /** PATCH /boards/:boardId — обновить доску */
+  updateBoard: (boardId: string, body: UpdateBoardRequest): Promise<BoardSummary> =>
+    apiClient.patch<BoardSummary>(`/boards/${boardId}`, body),
+
+  /** DELETE /boards/:boardId — архивировать доску */
   deleteBoard: (boardId: string): Promise<void> =>
     apiClient.delete<void>(`/boards/${boardId}`),
 }
