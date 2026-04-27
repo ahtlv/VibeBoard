@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { boardsApi } from '@/shared/api/boardsApi'
 import { workspacesApi } from '@/shared/api/workspacesApi'
@@ -388,11 +389,14 @@ function DeleteConfirmModal({ boardTitle, deleting, onConfirm, onCancel }: Delet
 }
 
 // ── Modal Overlay ─────────────────────────────────────────────────────────────
+// Рендерится через портал в document.body, чтобы выйти из stacking context
+// сайдбара (у него transition-transform, что ломает fixed-позиционирование).
+// Оверлей начинается под хедером (top-14), блюрит только контент.
 
 function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-x-0 bottom-0 top-14 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -401,6 +405,7 @@ function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClos
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
