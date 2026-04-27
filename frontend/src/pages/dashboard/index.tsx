@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/shared/ui/AppShell'
 import { BoardHeader, KanbanColumn, TaskModal } from '@/widgets'
@@ -6,7 +6,7 @@ import { boardsApi, workspacesApi } from '@/shared/api'
 import { tasksApi, mapTask } from '@/shared/api/tasksApi'
 import type { BoardSummary } from '@/shared/api/boardsApi'
 import type { WorkspaceResponse } from '@/shared/api/workspacesApi'
-import type { Board } from '@/entities/board/types'
+import type { Board, Column } from '@/entities/board/types'
 import type { Task } from '@/entities/task/types'
 
 type LoadState = 'loading' | 'error' | 'empty' | 'ready'
@@ -158,6 +158,25 @@ export function DashboardPage() {
     }
   }
 
+  async function handleAddColumn(title: string) {
+    if (!board || !activeBoardId) return
+
+    const tempId = `temp-col-${Date.now()}`
+    const optimistic: Column = { id: tempId, boardId: activeBoardId, title, position: board.columns.length, tasks: [] }
+    setBoard((prev) => prev ? { ...prev, columns: [...prev.columns, optimistic] } : prev)
+
+    try {
+      const real = await boardsApi.createColumn(activeBoardId, { title })
+      setBoard((prev) => prev
+        ? { ...prev, columns: prev.columns.map((c) => c.id === tempId ? real : c) }
+        : prev)
+    } catch {
+      setBoard((prev) => prev
+        ? { ...prev, columns: prev.columns.filter((c) => c.id !== tempId) }
+        : prev)
+    }
+  }
+
   function handleMoveTask(taskId: string, fromColumnId: string, toColumnId: string) {
     if (!board) return
     setMoveError(null)
@@ -267,9 +286,7 @@ export function DashboardPage() {
             <>
               <BoardHeader
                 boardName={board?.title ?? '…'}
-                workspaceName={workspace?.name ?? 'Workspace'}
-                onAddColumn={() => {/* TODO: создать колонку */}}
-                onAddTask={() => {/* TODO: создать задачу */}}
+                description={board?.description ?? null}
               />
 
               {showBoardSkeleton ? (
@@ -292,20 +309,8 @@ export function DashboardPage() {
                   ))}
                 </div>
               ) : board && board.columns.length === 0 ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl select-none">
-                    📋
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">This board is empty</p>
-                    <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Add a column to start organizing your tasks</p>
-                  </div>
-                  <button
-                    onClick={() => {/* TODO: создать колонку */}}
-                    className="mt-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
-                  >
-                    + Add column
-                  </button>
+                <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
+                  <AddColumnButton onAdd={handleAddColumn} />
                 </div>
               ) : (
                 <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
@@ -318,6 +323,7 @@ export function DashboardPage() {
                       onTaskClick={setSelectedTask}
                     />
                   ))}
+                  <AddColumnButton onAdd={handleAddColumn} />
                 </div>
               )}
             </>
@@ -399,4 +405,77 @@ function removeTaskFromColumn(board: Board, columnId: string, taskId: string): B
         : col
     ),
   }
+}
+
+// ── AddColumnButton ───────────────────────────────────────────────────────────
+
+function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  function open() {
+    setIsEditing(true)
+    setDraft('')
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  function cancel() {
+    setIsEditing(false)
+    setDraft('')
+  }
+
+  function submit() {
+    const title = draft.trim()
+    if (!title) return
+    onAdd(title)
+    cancel()
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') submit()
+    if (e.key === 'Escape') cancel()
+  }
+
+  if (isEditing) {
+    return (
+      <div className="flex w-64 shrink-0 flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 p-3 gap-2">
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Column name…"
+          className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+        />
+        <div className="flex gap-1.5">
+          <button
+            onClick={submit}
+            disabled={!draft.trim()}
+            className="flex-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          >
+            Add
+          </button>
+          <button
+            onClick={cancel}
+            className="rounded-md px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={open}
+      className="flex w-64 shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 py-6 text-sm text-gray-400 dark:text-gray-500 hover:border-indigo-400 dark:hover:border-indigo-600 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+      </svg>
+      Add column
+    </button>
+  )
 }

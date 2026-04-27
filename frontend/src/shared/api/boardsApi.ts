@@ -110,7 +110,12 @@ export const boardsApi = {
 
   /** POST /columns — добавить колонку */
   createColumn: (boardId: string, body: CreateColumnRequest): Promise<Column> =>
-    apiClient.post<Column>('/columns', { board_id: boardId, title: body.title }),
+    apiClient
+      .post<{ id: string; board_id: string; title: string; position: number }>('/columns', {
+        board_id: boardId,
+        title: body.title,
+      })
+      .then((r) => ({ id: r.id, boardId: r.board_id, title: r.title, position: r.position, tasks: [] })),
 
   /** PATCH /boards/:boardId — обновить доску */
   updateBoard: (boardId: string, body: UpdateBoardRequest): Promise<BoardSummary> =>
