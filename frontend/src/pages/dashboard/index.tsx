@@ -408,6 +408,8 @@ function removeTaskFromColumn(board: Board, columnId: string, taskId: string): B
 }
 
 // ── AddColumnButton ───────────────────────────────────────────────────────────
+// В спокойном состоянии выглядит как инпут с placeholder-текстом.
+// При клике оживает: синяя обводка + кнопки подтверждения.
 
 function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
   const [isEditing, setIsEditing] = useState(false)
@@ -437,21 +439,22 @@ function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
     if (e.key === 'Escape') cancel()
   }
 
-  const containerClass = 'flex w-64 shrink-0 flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 p-3 gap-2'
-  const btnBase = 'flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors'
+  // Общие стили инпута — одинаковые в обоих состояниях
+  const inputLook = 'w-64 shrink-0 rounded-xl border bg-gray-100 dark:bg-gray-800 px-3 py-2.5 text-sm transition-colors'
+  const btnBase = 'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors'
 
   if (isEditing) {
     return (
-      <div className={containerClass}>
+      <div className="flex w-64 shrink-0 flex-col gap-2">
         <input
           ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Column name…"
-          className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          className={`${inputLook} border-indigo-500 dark:border-indigo-400 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none ring-1 ring-indigo-500 dark:ring-indigo-400`}
         />
-        <div className="flex gap-1.5">
+        <div className="flex gap-2">
           <button
             onClick={submit}
             disabled={!draft.trim()}
@@ -473,7 +476,7 @@ function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
   return (
     <button
       onClick={open}
-      className={`${containerClass} text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 transition-colors`}
+      className={`${inputLook} border-gray-200 dark:border-gray-700 text-left text-gray-400 dark:text-gray-500 hover:border-indigo-400 dark:hover:border-indigo-500 hover:text-gray-500 dark:hover:text-gray-400`}
     >
       + Add column
     </button>
