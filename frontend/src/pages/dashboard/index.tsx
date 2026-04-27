@@ -437,9 +437,12 @@ function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
     if (e.key === 'Escape') cancel()
   }
 
+  const containerClass = 'flex w-64 shrink-0 flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 p-3 gap-2'
+  const btnBase = 'flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors'
+
   if (isEditing) {
     return (
-      <div className="flex w-64 shrink-0 flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 p-3 gap-2">
+      <div className={containerClass}>
         <input
           ref={inputRef}
           value={draft}
@@ -452,13 +455,13 @@ function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
           <button
             onClick={submit}
             disabled={!draft.trim()}
-            className="flex-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            className={`${btnBase} bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50`}
           >
             Add
           </button>
           <button
             onClick={cancel}
-            className="rounded-md px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700`}
           >
             Cancel
           </button>
@@ -470,12 +473,9 @@ function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
   return (
     <button
       onClick={open}
-      className="flex w-64 shrink-0 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 py-6 text-sm text-gray-400 dark:text-gray-500 hover:border-indigo-400 dark:hover:border-indigo-600 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+      className={`${containerClass} text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600 transition-colors`}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-      </svg>
-      Add column
+      + Add column
     </button>
   )
 }
