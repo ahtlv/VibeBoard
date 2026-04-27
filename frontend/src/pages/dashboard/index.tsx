@@ -17,6 +17,7 @@ export function DashboardPage() {
   const [boardSummaries, setBoardSummaries] = useState<BoardSummary[]>([])
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null)
   const [board, setBoard] = useState<Board | null>(null)
+  const [boardLoading, setBoardLoading] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [moveError, setMoveError] = useState<string | null>(null)
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
@@ -57,9 +58,10 @@ export function DashboardPage() {
         const startId = initialBoardId.current && boards.find(b => b.id === initialBoardId.current)
           ? initialBoardId.current
           : boards[0].id
+
         setActiveBoardId(startId)
-        setBoard(summaryToBoard(boards.find(b => b.id === startId)!))
         setLoadState('ready')
+
         if (!initialBoardId.current) {
           navigate(`/dashboard?board=${startId}`, { replace: true })
         }
@@ -72,6 +74,20 @@ export function DashboardPage() {
     return () => { cancelled = true }
   }, [])
 
+  // Загружаем полную доску (колонки + задачи) когда меняется activeBoardId
+  useEffect(() => {
+    if (!activeBoardId) return
+    let cancelled = false
+
+    setBoardLoading(true)
+    boardsApi.getBoard(activeBoardId)
+      .then((data) => { if (!cancelled) setBoard(data) })
+      .catch(() => { if (!cancelled) setBoard(null) })
+      .finally(() => { if (!cancelled) setBoardLoading(false) })
+
+    return () => { cancelled = true }
+  }, [activeBoardId])
+
   async function handleCreateWorkspace(e: FormEvent) {
     e.preventDefault()
     const name = newWorkspaceName.trim()
@@ -81,7 +97,6 @@ export function DashboardPage() {
       await workspacesApi.createWorkspace({ name })
       setNewWorkspaceName('')
       setLoadState('loading')
-      // перезагружаем данные
       const workspaces = await workspacesApi.listWorkspaces()
       if (workspaces.length > 0) {
         const ws = workspaces[0]
@@ -91,7 +106,6 @@ export function DashboardPage() {
         setLoadState(boards.length === 0 ? 'empty' : 'ready')
         if (boards.length > 0) {
           setActiveBoardId(boards[0].id)
-          setBoard(summaryToBoard(boards[0]))
         }
       }
     } catch {
@@ -101,20 +115,18 @@ export function DashboardPage() {
     }
   }
 
-  // При смене URL (клик в сайдбаре) или загрузке summaries — обновляем активную доску
+  // При смене URL (клик в сайдбаре) — обновляем activeBoardId
   useEffect(() => {
     if (boardSummaries.length === 0) return
     const target = boardSummaries.find((b) => b.id === boardIdFromUrl) ?? boardSummaries[0]
     if (target.id !== activeBoardId) {
       setActiveBoardId(target.id)
-      setBoard(summaryToBoard(target))
     }
   }, [boardIdFromUrl, boardSummaries])
 
   async function handleAddTask(columnId: string, title: string) {
     if (!board || !activeBoardId) return
 
-    // Оптимистичный insert
     const tempId = `temp-${Date.now()}`
     const optimistic: Task = {
       id: tempId,
@@ -150,14 +162,11 @@ export function DashboardPage() {
     if (!board) return
     setMoveError(null)
 
-    // Сохраняем снапшот для возможного rollback
     const snapshot = board
 
-    // Вычисляем позицию: конец целевой колонки
     const toCol = board.columns.find((c) => c.id === toColumnId)
     const targetPosition = toCol ? toCol.tasks.length : 0
 
-    // Оптимистичный move
     setBoard((prev) => {
       if (!prev) return prev
       const fromCol = prev.columns.find((c) => c.id === fromColumnId)
@@ -178,7 +187,6 @@ export function DashboardPage() {
       }
     })
 
-    // Синхронизация с backend (fire-and-forget с rollback)
     tasksApi
       .moveTask(taskId, { columnId: toColumnId, position: targetPosition })
       .catch(() => {
@@ -187,6 +195,8 @@ export function DashboardPage() {
         setTimeout(() => setMoveError(null), 4000)
       })
   }
+
+  const showBoardSkeleton = boardLoading || (loadState === 'ready' && !board)
 
   return (
     <AppShell>
@@ -253,39 +263,53 @@ export function DashboardPage() {
             </div>
           )}
 
-          {loadState === 'ready' && board && (
+          {loadState === 'ready' && (
             <>
               <BoardHeader
-                boardName={board.title}
+                boardName={board?.title ?? '…'}
                 workspaceName={workspace?.name ?? 'Workspace'}
                 onAddColumn={() => {/* TODO: создать колонку */}}
                 onAddTask={() => {/* TODO: создать задачу */}}
               />
 
-              {/* Columns area */}
-              <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
-                {board.columns.length === 0 ? (
-                  <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl select-none">
-                      📋
+              {showBoardSkeleton ? (
+                <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="flex w-64 shrink-0 flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900">
+                      <div className="flex items-center justify-between px-3 py-2.5">
+                        <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                        <div className="h-4 w-5 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+                      </div>
+                      <div className="flex-1 space-y-2 px-2 pb-2">
+                        {[0, 1].map((j) => (
+                          <div key={j} className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-3">
+                            <div className="mb-2 h-4 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                            <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        This board is empty
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
-                        Add a column to start organizing your tasks
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {/* TODO: создать колонку */}}
-                      className="mt-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
-                    >
-                      + Add column
-                    </button>
+                  ))}
+                </div>
+              ) : board && board.columns.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-2xl select-none">
+                    📋
                   </div>
-                ) : (
-                  board.columns.map((column) => (
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">This board is empty</p>
+                    <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">Add a column to start organizing your tasks</p>
+                  </div>
+                  <button
+                    onClick={() => {/* TODO: создать колонку */}}
+                    className="mt-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+                  >
+                    + Add column
+                  </button>
+                </div>
+              ) : (
+                <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
+                  {board?.columns.map((column) => (
                     <KanbanColumn
                       key={column.id}
                       column={column}
@@ -293,9 +317,9 @@ export function DashboardPage() {
                       onMoveTask={handleMoveTask}
                       onTaskClick={setSelectedTask}
                     />
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -307,9 +331,7 @@ export function DashboardPage() {
               Pomodoro
             </h2>
             <div className="text-center">
-              <p className="text-3xl font-mono font-semibold text-gray-900 dark:text-gray-100">
-                25:00
-              </p>
+              <p className="text-3xl font-mono font-semibold text-gray-900 dark:text-gray-100">25:00</p>
               <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Focus session</p>
               <button className="mt-3 w-full rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
                 Start
@@ -376,19 +398,5 @@ function removeTaskFromColumn(board: Board, columnId: string, taskId: string): B
         ? { ...col, tasks: col.tasks.filter((t) => t.id !== taskId) }
         : col
     ),
-  }
-}
-
-/** Конвертирует BoardSummary (без колонок) в Board для рендера */
-function summaryToBoard(summary: BoardSummary): Board {
-  return {
-    id: summary.id,
-    workspaceId: summary.workspaceId,
-    title: summary.title,
-    description: summary.description,
-    columns: [],
-    labels: [],
-    createdAt: summary.createdAt,
-    updatedAt: summary.updatedAt,
   }
 }

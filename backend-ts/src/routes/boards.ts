@@ -75,6 +75,37 @@ boardsRouter.post('/', async (c) => {
   return c.json(data, 201)
 })
 
+// GET /api/v1/boards/:id — полная доска с колонками и задачами
+boardsRouter.get('/:id', async (c) => {
+  const userId = c.get('userId')
+  const boardId = c.req.param('id')
+  const supabase = getSupabase(c.env)
+
+  const { data: board } = await supabase
+    .from('boards')
+    .select('*')
+    .eq('id', boardId)
+    .eq('is_archived', false)
+    .single()
+
+  if (!board) return c.json({ error: 'Board not found' }, 404)
+  if (!await isMember(supabase, board.workspace_id, userId)) {
+    return c.json({ error: 'Not a member of this workspace' }, 403)
+  }
+
+  const [{ data: columns }, { data: tasks }] = await Promise.all([
+    supabase.from('columns').select('*').eq('board_id', boardId).order('position'),
+    supabase.from('tasks').select('*').eq('board_id', boardId).eq('is_archived', false).order('position'),
+  ])
+
+  const columnsWithTasks = (columns ?? []).map((col) => ({
+    ...col,
+    tasks: (tasks ?? []).filter((t) => t.column_id === col.id),
+  }))
+
+  return c.json({ ...board, columns: columnsWithTasks })
+})
+
 // PATCH /api/v1/boards/:id
 const updateBoardSchema = z.object({
   title: z.string().min(1).max(255).optional(),
