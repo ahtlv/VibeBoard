@@ -1,4 +1,6 @@
 export { BoardHeader } from './BoardHeader'
+export { BoardMembersStack } from './BoardMembersStack'
+export { InviteMembersModal } from './InviteMembersModal'
 export { KanbanColumn } from './KanbanColumn'
 export { TaskCard } from './TaskCard'
 export { TaskModal } from './TaskModal'

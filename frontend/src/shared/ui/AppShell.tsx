@@ -50,7 +50,7 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </header>
 
-      <div className="flex pt-14">
+      <div className="flex pt-14 h-screen">
         {/* Sidebar backdrop (mobile) */}
         {sidebarOpen && (
           <div
@@ -120,7 +120,7 @@ export function AppShell({ children }: AppShellProps) {
         </aside>
 
         {/* Main content */}
-        <main className="min-w-0 flex-1 px-4 py-4">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-4 h-full overflow-y-auto">{children}</main>
       </div>
     </div>
   )

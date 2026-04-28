@@ -6,8 +6,11 @@ import { boardsApi, workspacesApi } from '@/shared/api'
 import { tasksApi, mapTask } from '@/shared/api/tasksApi'
 import type { BoardSummary } from '@/shared/api/boardsApi'
 import type { WorkspaceResponse } from '@/shared/api/workspacesApi'
-import type { Board, Column } from '@/entities/board/types'
+import type { Board, BoardMember, Column } from '@/entities/board/types'
 import type { Task } from '@/entities/task/types'
+import type { WorkspaceRole } from '@/shared/types/workspace'
+import { boardMembersStore } from '@/shared/lib/boardMembersStore'
+import { boardMembersApi } from '@/shared/api/boardMembersApi'
 
 type LoadState = 'loading' | 'error' | 'empty' | 'ready'
 
@@ -20,6 +23,7 @@ export function DashboardPage() {
   const [boardLoading, setBoardLoading] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [moveError, setMoveError] = useState<string | null>(null)
+  const [members, setMembers] = useState<BoardMember[]>([])
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [creatingWorkspace, setCreatingWorkspace] = useState(false)
   const navigate = useNavigate()
@@ -80,13 +84,52 @@ export function DashboardPage() {
     let cancelled = false
 
     setBoardLoading(true)
-    boardsApi.getBoard(activeBoardId)
-      .then((data) => { if (!cancelled) setBoard(data) })
-      .catch(() => { if (!cancelled) setBoard(null) })
+    // Предзаполняем из store если борд только что создан с участниками
+    const preseeded = boardMembersStore.consume(activeBoardId)
+    if (preseeded) setMembers(preseeded)
+
+    Promise.all([
+      boardsApi.getBoard(activeBoardId),
+      boardMembersApi.list(activeBoardId),
+    ])
+      .then(([boardData, membersData]) => {
+        if (!cancelled) {
+          setBoard(boardData)
+          setMembers(membersData)
+        }
+      })
+      .catch(() => { if (!cancelled) { setBoard(null); setMembers([]) } })
       .finally(() => { if (!cancelled) setBoardLoading(false) })
 
     return () => { cancelled = true }
   }, [activeBoardId])
+
+  async function handleInviteMember(email: string, role: WorkspaceRole) {
+    if (!activeBoardId || role === 'owner') return
+    try {
+      const newMember = await boardMembersApi.add(activeBoardId, email, role as 'admin' | 'member')
+      setMembers((prev) => [...prev, newMember])
+    } catch {
+      // Молча — InviteMembersModal сама покажет ошибку если нужно
+    }
+  }
+
+  async function handleRemoveMember(memberId: string) {
+    if (!activeBoardId) return
+    setMembers((prev) => prev.filter((m) => m.id !== memberId))
+    await boardMembersApi.remove(activeBoardId, memberId).catch(() => {
+      // Откат при ошибке
+      boardMembersApi.list(activeBoardId).then(setMembers).catch(() => {})
+    })
+  }
+
+  async function handleChangeMemberRole(memberId: string, role: WorkspaceRole) {
+    if (!activeBoardId || role === 'owner') return
+    setMembers((prev) => prev.map((m) => m.id === memberId ? { ...m, role } : m))
+    await boardMembersApi.updateRole(activeBoardId, memberId, role as 'admin' | 'member').catch(() => {
+      boardMembersApi.list(activeBoardId).then(setMembers).catch(() => {})
+    })
+  }
 
   async function handleCreateWorkspace(e: FormEvent) {
     e.preventDefault()
@@ -228,7 +271,7 @@ export function DashboardPage() {
         {/* Main kanban area */}
         <div className="flex min-w-0 flex-1 flex-col">
           {loadState === 'loading' && (
-            <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
+            <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="flex w-64 shrink-0 flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900">
                   <div className="flex items-center justify-between px-3 py-2.5">
@@ -287,10 +330,14 @@ export function DashboardPage() {
               <BoardHeader
                 boardName={board?.title ?? '…'}
                 description={board?.description ?? null}
+                members={members}
+                onInvite={handleInviteMember}
+                onRemove={handleRemoveMember}
+                onChangeRole={handleChangeMemberRole}
               />
 
               {showBoardSkeleton ? (
-                <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
+                <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="flex w-64 shrink-0 flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900">
                       <div className="flex items-center justify-between px-3 py-2.5">
@@ -309,11 +356,11 @@ export function DashboardPage() {
                   ))}
                 </div>
               ) : board && board.columns.length === 0 ? (
-                <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
+                <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto">
                   <AddColumnButton onAdd={handleAddColumn} />
                 </div>
               ) : (
-                <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-4">
+                <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto">
                   {board?.columns.map((column) => (
                     <KanbanColumn
                       key={column.id}

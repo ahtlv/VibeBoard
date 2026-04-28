@@ -1,4 +1,49 @@
-import type { Board } from '@/entities/board/types'
+import type { Board, BoardMember } from '@/entities/board/types'
+
+export function mockBoardMembers(): BoardMember[] {
+  return [
+    {
+      id: 'bm-1',
+      userId: 'user-1',
+      name: 'Anatoli Flame',
+      email: 'flammerster@gmail.com',
+      avatarUrl: null,
+      role: 'owner',
+      status: 'active',
+      joinedAt: '2026-04-01T00:00:00Z',
+    },
+    {
+      id: 'bm-2',
+      userId: 'user-2',
+      name: 'Alex Chen',
+      email: 'alex.chen@example.com',
+      avatarUrl: null,
+      role: 'admin',
+      status: 'active',
+      joinedAt: '2026-04-05T00:00:00Z',
+    },
+    {
+      id: 'bm-3',
+      userId: 'user-3',
+      name: 'Maria Santos',
+      email: 'maria@example.com',
+      avatarUrl: null,
+      role: 'member',
+      status: 'active',
+      joinedAt: '2026-04-10T00:00:00Z',
+    },
+    {
+      id: 'bm-4',
+      userId: 'user-4',
+      name: 'Pavel Ivanov',
+      email: 'pavel@example.com',
+      avatarUrl: null,
+      role: 'member',
+      status: 'pending',
+      joinedAt: '2026-04-28T00:00:00Z',
+    },
+  ]
+}
 
 export const MOCK_BOARD: Board = {
   id: 'board-1',

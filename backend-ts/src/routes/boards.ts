@@ -144,6 +144,166 @@ boardsRouter.patch('/:id', async (c) => {
   return c.json(data)
 })
 
+// ── Board Members ─────────────────────────────────────────────────────────────
+
+async function getBoardWorkspace(supabase: ReturnType<typeof getSupabase>, boardId: string) {
+  const { data } = await supabase
+    .from('boards')
+    .select('workspace_id')
+    .eq('id', boardId)
+    .eq('is_archived', false)
+    .single()
+  return data?.workspace_id ?? null
+}
+
+// GET /api/v1/boards/:id/members
+boardsRouter.get('/:id/members', async (c) => {
+  const userId = c.get('userId')
+  const boardId = c.req.param('id')
+  const supabase = getSupabase(c.env)
+
+  const workspaceId = await getBoardWorkspace(supabase, boardId)
+  if (!workspaceId) return c.json({ error: 'Board not found' }, 404)
+  if (!await isMember(supabase, workspaceId, userId)) return c.json({ error: 'Forbidden' }, 403)
+
+  const { data, error } = await supabase
+    .from('board_members')
+    .select('id, board_id, user_id, email, role, status, invited_by, joined_at, users(name, avatar_url)')
+    .eq('board_id', boardId)
+    .order('joined_at')
+
+  if (error) return c.json({ error: error.message }, 500)
+
+  return c.json(
+    (data ?? []).map((m) => ({
+      id: m.id,
+      boardId: m.board_id,
+      userId: m.user_id,
+      email: m.email,
+      name: (m.users as unknown as { name: string; avatar_url: string | null } | null)?.name ?? m.email.split('@')[0],
+      avatarUrl: (m.users as unknown as { name: string; avatar_url: string | null } | null)?.avatar_url ?? null,
+      role: m.role,
+      status: m.status,
+      joinedAt: m.joined_at,
+    })),
+  )
+})
+
+// POST /api/v1/boards/:id/members
+const addMemberSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(['admin', 'member']).default('member'),
+})
+
+boardsRouter.post('/:id/members', async (c) => {
+  const userId = c.get('userId')
+  const boardId = c.req.param('id')
+  const supabase = getSupabase(c.env)
+
+  const workspaceId = await getBoardWorkspace(supabase, boardId)
+  if (!workspaceId) return c.json({ error: 'Board not found' }, 404)
+  if (!await isMember(supabase, workspaceId, userId)) return c.json({ error: 'Forbidden' }, 403)
+
+  const body = await c.req.json().catch(() => null)
+  const parsed = addMemberSchema.safeParse(body)
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
+
+  const { email, role } = parsed.data
+
+  // Ищем пользователя по email
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id, name, avatar_url')
+    .eq('email', email)
+    .single()
+
+  const { data, error } = await supabase
+    .from('board_members')
+    .insert({
+      board_id: boardId,
+      user_id: existingUser?.id ?? null,
+      email,
+      role,
+      status: existingUser ? 'active' : 'pending',
+      invited_by: userId,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    if (error.code === '23505') return c.json({ error: 'Already a member' }, 409)
+    return c.json({ error: error.message }, 500)
+  }
+
+  return c.json({
+    id: data.id,
+    boardId: data.board_id,
+    userId: data.user_id,
+    email: data.email,
+    name: existingUser?.name ?? email.split('@')[0],
+    avatarUrl: existingUser?.avatar_url ?? null,
+    role: data.role,
+    status: data.status,
+    joinedAt: data.joined_at,
+  }, 201)
+})
+
+// PATCH /api/v1/boards/:id/members/:memberId
+const updateMemberSchema = z.object({
+  role: z.enum(['admin', 'member']),
+})
+
+boardsRouter.patch('/:id/members/:memberId', async (c) => {
+  const userId = c.get('userId')
+  const boardId = c.req.param('id')
+  const memberId = c.req.param('memberId')
+  const supabase = getSupabase(c.env)
+
+  const workspaceId = await getBoardWorkspace(supabase, boardId)
+  if (!workspaceId) return c.json({ error: 'Board not found' }, 404)
+  if (!await isMember(supabase, workspaceId, userId)) return c.json({ error: 'Forbidden' }, 403)
+
+  const body = await c.req.json().catch(() => null)
+  const parsed = updateMemberSchema.safeParse(body)
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
+
+  const { data, error } = await supabase
+    .from('board_members')
+    .update({ role: parsed.data.role })
+    .eq('id', memberId)
+    .eq('board_id', boardId)
+    .select()
+    .single()
+
+  if (error || !data) return c.json({ error: error?.message ?? 'Not found' }, 404)
+
+  return c.json({ id: data.id, role: data.role })
+})
+
+// DELETE /api/v1/boards/:id/members/:memberId
+boardsRouter.delete('/:id/members/:memberId', async (c) => {
+  const userId = c.get('userId')
+  const boardId = c.req.param('id')
+  const memberId = c.req.param('memberId')
+  const supabase = getSupabase(c.env)
+
+  const workspaceId = await getBoardWorkspace(supabase, boardId)
+  if (!workspaceId) return c.json({ error: 'Board not found' }, 404)
+  if (!await isMember(supabase, workspaceId, userId)) return c.json({ error: 'Forbidden' }, 403)
+
+  const { error } = await supabase
+    .from('board_members')
+    .delete()
+    .eq('id', memberId)
+    .eq('board_id', boardId)
+
+  if (error) return c.json({ error: error.message }, 500)
+
+  return new Response(null, { status: 204 })
+})
+
+// ── DELETE board (soft archive) ───────────────────────────────────────────────
+
 // DELETE /api/v1/boards/:id — soft archive
 boardsRouter.delete('/:id', async (c) => {
   const userId = c.get('userId')

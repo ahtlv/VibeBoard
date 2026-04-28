@@ -1,9 +1,16 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ModalOverlay } from '@/shared/ui/Modal'
+import { Avatar } from '@/shared/ui/Avatar'
 import { boardsApi } from '@/shared/api/boardsApi'
 import { workspacesApi } from '@/shared/api/workspacesApi'
+import { boardMembersStore } from '@/shared/lib/boardMembersStore'
+import { usersApi } from '@/shared/api/usersApi'
 import type { BoardSummary } from '@/shared/api/boardsApi'
+import type { WorkspaceMember } from '@/shared/api/workspacesApi'
+import type { UserSearchResult } from '@/shared/api/usersApi'
+import type { BoardMember } from '@/entities/board/types'
+import type { WorkspaceRole } from '@/shared/types/workspace'
 
 export function BoardNav({ onClose }: { onClose?: () => void }) {
   const [boards, setBoards] = useState<BoardSummary[]>([])
@@ -145,7 +152,121 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Members
+  const [wsMembers, setWsMembers] = useState<WorkspaceMember[]>([])
+  const [membersLoading, setMembersLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [showInviteRow, setShowInviteRow] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member')
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [pendingInvites, setPendingInvites] = useState<{ email: string; name: string; role: 'admin' | 'member' }[]>([])
+  const [suggestions, setSuggestions] = useState<UserSearchResult[]>([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inviteInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => { inputRef.current?.focus() }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    workspacesApi.listMembers(workspaceId)
+      .then((list) => { if (!cancelled) setWsMembers(list) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setMembersLoading(false) })
+    return () => { cancelled = true }
+  }, [workspaceId])
+
+  // Когда участники загрузились и их нет — сразу показываем форму инвайта
+  useEffect(() => {
+    if (!membersLoading && wsMembers.length === 0) setShowInviteRow(true)
+  }, [membersLoading, wsMembers.length])
+
+  function toggleMember(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function handleInviteEmailChange(value: string) {
+    setInviteEmail(value)
+    setInviteError(null)
+    setSuggestionsOpen(false)
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    if (value.trim().length < 2) { setSuggestions([]); return }
+    searchTimerRef.current = setTimeout(async () => {
+      const results = await usersApi.search(value.trim()).catch(() => [])
+      const already = new Set([
+        ...wsMembers.map((m) => m.email.toLowerCase()),
+        ...pendingInvites.map((i) => i.email.toLowerCase()),
+      ])
+      setSuggestions(results.filter((r) => !already.has(r.email.toLowerCase())))
+      setSuggestionsOpen(true)
+    }, 250)
+  }
+
+  function selectSuggestion(user: UserSearchResult) {
+    setInviteEmail(user.email)
+    setSuggestions([])
+    setSuggestionsOpen(false)
+    inviteInputRef.current?.focus()
+  }
+
+  function handleAddInvite(emailOverride?: string, nameOverride?: string) {
+    const email = (emailOverride ?? inviteEmail).trim()
+    if (!email) return
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) { setInviteError('Invalid email'); return }
+    const alreadyInWs = wsMembers.some((m) => m.email.toLowerCase() === email.toLowerCase())
+    const alreadyPending = pendingInvites.some((i) => i.email.toLowerCase() === email.toLowerCase())
+    if (alreadyInWs || alreadyPending) { setInviteError('Already added'); return }
+    const name = nameOverride ?? suggestions.find((s) => s.email === email)?.name ?? email.split('@')[0]
+    setPendingInvites((prev) => [...prev, { email, name, role: inviteRole }])
+    setInviteEmail('')
+    setInviteRole('member')
+    setInviteError(null)
+    setSuggestions([])
+    setSuggestionsOpen(false)
+    setShowInviteRow(wsMembers.length === 0)
+  }
+
+  function handleInviteKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); handleAddInvite() }
+    if (e.key === 'Escape') { setSuggestionsOpen(false) }
+  }
+
+  function removePendingInvite(email: string) {
+    setPendingInvites((prev) => prev.filter((i) => i.email !== email))
+  }
+
+  function buildBoardMembers(boardId: string): BoardMember[] {
+    const now = new Date().toISOString()
+    const fromWs: BoardMember[] = wsMembers
+      .filter((m) => selectedIds.has(m.id))
+      .map((m) => ({
+        id: `bm-ws-${m.id}`,
+        userId: m.user_id,
+        name: m.name,
+        email: m.email,
+        avatarUrl: m.avatar_url,
+        role: m.role as WorkspaceRole,
+        status: 'active' as const,
+        joinedAt: now,
+      }))
+    const fromInvites: BoardMember[] = pendingInvites.map((inv, i) => ({
+      id: `bm-inv-${boardId}-${i}`,
+      userId: '',
+      name: inv.name,
+      email: inv.email,
+      avatarUrl: null,
+      role: inv.role,
+      status: 'pending' as const,
+      joinedAt: now,
+    }))
+    return [...fromWs, ...fromInvites]
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -159,6 +280,8 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
         title: trimmedTitle,
         description: desc.trim() || undefined,
       })
+      const members = buildBoardMembers(created.id)
+      if (members.length > 0) boardMembersStore.set(created.id, members)
       onCreated(created)
     } catch {
       setError('Failed to create board. Please try again.')
@@ -166,11 +289,13 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
     }
   }
 
+  const totalSelected = selectedIds.size + pendingInvites.length
+
   return (
-    <ModalOverlay onClose={onClose}>
+    <ModalOverlay onClose={onClose} wide>
       <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">New board</h3>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className={labelClass}>Name</label>
           <input
@@ -184,15 +309,168 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
         </div>
 
         <div>
-          <label className={labelClass}>Description <span className="text-gray-400 font-normal">(optional)</span></label>
+          <label className={labelClass}>
+            Description <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
           <textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             placeholder="What is this board for?"
             disabled={creating}
-            rows={3}
+            rows={2}
             className={`${fieldClass} resize-none`}
           />
+        </div>
+
+        {/* ── Members ── */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className={labelClass + ' mb-0'}>
+              Members{' '}
+              <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            {totalSelected > 0 && (
+              <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                {totalSelected} selected
+              </span>
+            )}
+          </div>
+
+          {membersLoading ? (
+            <div className="flex gap-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-8 w-8 rounded-full animate-pulse bg-gray-200 dark:bg-gray-700" />
+              ))}
+            </div>
+          ) : wsMembers.length > 0 ? (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {wsMembers.map((m) => {
+                const selected = selectedIds.has(m.id)
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleMember(m.id)}
+                    title={m.email}
+                    className={[
+                      'flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium transition-all',
+                      selected
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600',
+                    ].join(' ')}
+                  >
+                    <Avatar name={m.name} avatarUrl={m.avatar_url} size="sm" />
+                    <span>{m.name}</span>
+                    {selected && (
+                      <svg className="h-3 w-3 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+
+          {/* Pending invites */}
+          {pendingInvites.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {pendingInvites.map((inv) => (
+                <span
+                  key={inv.email}
+                  className="flex items-center gap-1 rounded-full bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300"
+                >
+                  {inv.email}
+                  <button
+                    type="button"
+                    onClick={() => removePendingInvite(inv.email)}
+                    className="ml-0.5 hover:text-red-500 transition-colors"
+                  >
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Invite toggle / form */}
+          {wsMembers.length > 0 && !showInviteRow && (
+            <button
+              type="button"
+              onClick={() => setShowInviteRow(true)}
+              className="text-xs text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            >
+              + Invite someone new
+            </button>
+          )}
+
+          {showInviteRow && (
+            <div className="space-y-1">
+              <div className="flex gap-1.5">
+                <div className="relative flex-1 min-w-0">
+                  <input
+                    ref={inviteInputRef}
+                    type="text"
+                    value={inviteEmail}
+                    onChange={(e) => handleInviteEmailChange(e.target.value)}
+                    onKeyDown={handleInviteKeyDown}
+                    onBlur={() => setTimeout(() => setSuggestionsOpen(false), 150)}
+                    onFocus={() => suggestions.length > 0 && setSuggestionsOpen(true)}
+                    placeholder="email@example.com"
+                    autoComplete="off"
+                    className={`${fieldClass} w-full`}
+                  />
+                  {suggestionsOpen && suggestions.length > 0 && (
+                    <ul className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-lg overflow-hidden">
+                      {suggestions.map((user) => (
+                        <li key={user.id}>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); selectSuggestion(user) }}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                          >
+                            <Avatar name={user.name} avatarUrl={user.avatar_url} size="sm" />
+                            <div className="min-w-0 text-left">
+                              <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
+                              <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member')}
+                  className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-indigo-500"
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleAddInvite()}
+                  disabled={!inviteEmail.trim()}
+                  className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  Add
+                </button>
+              </div>
+              {inviteError && <p className="text-xs text-red-500">{inviteError}</p>}
+              {wsMembers.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setShowInviteRow(false); setInviteEmail(''); setInviteError(null) }}
+                  className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  Cancel invite
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {error && <p className="text-xs text-red-500">{error}</p>}
@@ -388,24 +666,3 @@ function DeleteConfirmModal({ boardTitle, deleting, onConfirm, onCancel }: Delet
   )
 }
 
-// ── Modal Overlay ─────────────────────────────────────────────────────────────
-// Рендерится через портал в document.body, чтобы выйти из stacking context
-// сайдбара (у него transition-transform, что ломает fixed-позиционирование).
-// Оверлей начинается под хедером (top-14), блюрит только контент.
-
-function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return createPortal(
-    <div
-      className="fixed inset-x-0 bottom-0 top-14 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>,
-    document.body,
-  )
-}
