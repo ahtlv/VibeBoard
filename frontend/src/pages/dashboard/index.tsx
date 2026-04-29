@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type For
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/shared/ui/AppShell'
 import { BoardHeader, KanbanColumn, TaskModal } from '@/widgets'
+import type { TaskModalMode, TaskFormValues } from '@/widgets/TaskModal'
 import { boardsApi, workspacesApi } from '@/shared/api'
 import { tasksApi, mapTask } from '@/shared/api/tasksApi'
 import type { BoardSummary } from '@/shared/api/boardsApi'
@@ -23,7 +24,7 @@ export function DashboardPage() {
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null)
   const [board, setBoard] = useState<Board | null>(null)
   const [boardLoading, setBoardLoading] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [taskModal, setTaskModal] = useState<TaskModalMode | null>(null)
   const [moveError, setMoveError] = useState<string | null>(null)
   const [members, setMembers] = useState<BoardMember[]>([])
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
@@ -174,37 +175,82 @@ export function DashboardPage() {
     }
   }, [boardIdFromUrl, boardSummaries])
 
-  async function handleAddTask(columnId: string, title: string) {
-    if (!board || !activeBoardId) return
+  async function handleSubmitTask(values: TaskFormValues) {
+    if (!taskModal) return
+    const { title, description, priority, dueDate, bgColor, assigneeIds } = values
 
-    const tempId = `temp-${Date.now()}`
-    const optimistic: Task = {
-      id: tempId,
-      boardId: activeBoardId,
-      columnId,
-      title,
-      description: null,
-      status: 'todo',
-      priority: 'medium',
-      position: 9999,
-      dueDate: null,
-      labels: [],
-      checklists: [],
-      assigneeIds: [],
-      totalTrackedSeconds: 0,
-      pomodoroSessionsCount: 0,
-      recurring: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    setBoard((prev) => insertTaskInColumn(prev!, columnId, optimistic))
+    if (taskModal.kind === 'create') {
+      const columnId = taskModal.columnId
+      if (!board || !activeBoardId) { setTaskModal(null); return }
 
-    try {
-      const raw = await tasksApi.createTask({ boardId: activeBoardId, columnId, title })
-      const real = mapTask(raw)
-      setBoard((prev) => replaceTaskInColumn(prev!, columnId, tempId, real))
-    } catch {
-      setBoard((prev) => removeTaskFromColumn(prev!, columnId, tempId))
+      const tempId = `temp-${Date.now()}`
+      const optimistic: Task = {
+        id: tempId,
+        boardId: activeBoardId,
+        columnId,
+        title,
+        description: description || null,
+        status: 'todo',
+        priority,
+        position: 9999,
+        dueDate: dueDate || null,
+        labels: [],
+        checklists: [],
+        assigneeIds,
+        totalTrackedSeconds: 0,
+        pomodoroSessionsCount: 0,
+        recurring: null,
+        bgColor,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      setBoard((prev) => insertTaskInColumn(prev!, columnId, optimistic))
+      setTaskModal(null)
+
+      try {
+        const raw = await tasksApi.createTask({
+          boardId: activeBoardId, columnId, title,
+          description: description || null,
+          priority,
+          dueDate: dueDate || null,
+          bgColor,
+          assigneeIds,
+        })
+        const real = mapTask(raw)
+        setBoard((prev) => replaceTaskInColumn(prev!, columnId, tempId, real))
+      } catch {
+        setBoard((prev) => removeTaskFromColumn(prev!, columnId, tempId))
+      }
+    } else {
+      // edit — оптимистичный патч + API
+      const task = taskModal.task
+      const optimistic: Task = {
+        ...task,
+        title,
+        description: description || null,
+        priority,
+        dueDate: dueDate || null,
+        bgColor,
+        assigneeIds,
+        updatedAt: new Date().toISOString(),
+      }
+      setBoard((prev) => prev ? replaceTaskInColumn(prev, task.columnId, task.id, optimistic) : prev)
+      setTaskModal(null)
+
+      tasksApi.updateTask(task.id, {
+        title,
+        description: description || null,
+        priority,
+        dueDate: dueDate || null,
+        bgColor,
+        assigneeIds,
+      }).then((raw) => {
+        const real = mapTask(raw)
+        setBoard((prev) => prev ? replaceTaskInColumn(prev, task.columnId, task.id, real) : prev)
+      }).catch(() => {
+        // откат при ошибке
+        setBoard((prev) => prev ? replaceTaskInColumn(prev, task.columnId, task.id, task) : prev)
+      })
     }
   }
 
@@ -298,14 +344,11 @@ export function DashboardPage() {
     lastDragOverRef.current = null
   }
 
-  function handleMoveTask(taskId: string, fromColumnId: string, toColumnId: string) {
+  function handleMoveTask(taskId: string, fromColumnId: string, toColumnId: string, targetIndex: number) {
     if (!board) return
     setMoveError(null)
 
     const snapshot = board
-
-    const toCol = board.columns.find((c) => c.id === toColumnId)
-    const targetPosition = toCol ? toCol.tasks.length : 0
 
     setBoard((prev) => {
       if (!prev) return prev
@@ -313,14 +356,20 @@ export function DashboardPage() {
       const task = fromCol?.tasks.find((t) => t.id === taskId)
       if (!task) return prev
 
+      const updatedTask = { ...task, columnId: toColumnId }
+
       return {
         ...prev,
         columns: prev.columns.map((col) => {
-          if (col.id === fromColumnId) {
+          if (col.id === fromColumnId && col.id !== toColumnId) {
             return { ...col, tasks: col.tasks.filter((t) => t.id !== taskId) }
           }
           if (col.id === toColumnId) {
-            return { ...col, tasks: [...col.tasks, { ...task, columnId: toColumnId }] }
+            const withoutTask = col.tasks.filter((t) => t.id !== taskId)
+            const clampedIndex = Math.min(targetIndex, withoutTask.length)
+            const newTasks = [...withoutTask]
+            newTasks.splice(clampedIndex, 0, updatedTask)
+            return { ...col, tasks: newTasks }
           }
           return col
         }),
@@ -328,7 +377,7 @@ export function DashboardPage() {
     })
 
     tasksApi
-      .moveTask(taskId, { columnId: toColumnId, position: targetPosition })
+      .moveTask(taskId, { columnId: toColumnId, position: targetIndex })
       .catch(() => {
         setBoard(snapshot)
         setMoveError('Failed to move task. Changes reverted.')
@@ -458,9 +507,10 @@ export function DashboardPage() {
                       >
                         <KanbanColumn
                           column={column}
-                          onAddTask={(title) => handleAddTask(column.id, title)}
+                          members={members}
+                          onRequestAddTask={(columnId) => setTaskModal({ kind: 'create', columnId })}
                           onMoveTask={handleMoveTask}
-                          onTaskClick={setSelectedTask}
+                          onTaskClick={(task) => setTaskModal({ kind: 'edit', task })}
                           onUpdateColumn={handleUpdateColumn}
                           onDeleteColumn={handleDeleteColumn}
                           canEdit={canEdit}
@@ -515,8 +565,13 @@ export function DashboardPage() {
         </aside>
       </div>
 
-      {selectedTask && (
-        <TaskModal task={selectedTask} onClose={() => setSelectedTask(null)} />
+      {taskModal && (
+        <TaskModal
+          mode={taskModal}
+          members={members}
+          onClose={() => setTaskModal(null)}
+          onSubmit={handleSubmitTask}
+        />
       )}
     </AppShell>
   )

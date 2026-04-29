@@ -15,10 +15,12 @@ export interface TaskApiResponse {
   status: TaskStatus
   priority: Priority
   due_date: string | null
+  bg_color: string | null
   tracked_time_total: number
   pomodoro_sessions_count: number
   recurring_rule: Record<string, unknown> | null
   is_archived: boolean
+  assignee_ids: string[]
   checklist_items: Array<{
     id: string
     task_id: string
@@ -42,9 +44,10 @@ export function mapTask(r: TaskApiResponse): Task {
     priority: r.priority,
     position: r.position,
     dueDate: r.due_date,
+    bgColor: r.bg_color,
     labels: [],
     checklists: [],
-    assigneeIds: [],
+    assigneeIds: r.assignee_ids ?? [],
     totalTrackedSeconds: r.tracked_time_total,
     pomodoroSessionsCount: r.pomodoro_sessions_count,
     recurring: null,
@@ -59,9 +62,11 @@ export interface CreateTaskRequest {
   boardId: string
   columnId: string
   title: string
-  description?: string
+  description?: string | null
   priority?: Priority
-  dueDate?: string
+  dueDate?: string | null
+  bgColor?: string | null
+  assigneeIds?: string[]
 }
 
 export interface UpdateTaskRequest {
@@ -70,6 +75,7 @@ export interface UpdateTaskRequest {
   status?: TaskStatus
   priority?: Priority
   dueDate?: string | null
+  bgColor?: string | null
   assigneeIds?: string[]
 }
 
@@ -87,19 +93,22 @@ export const tasksApi = {
       board_id: body.boardId,
       column_id: body.columnId,
       title: body.title,
-      description: body.description,
+      description: body.description ?? null,
       priority: body.priority,
-      due_date: body.dueDate,
+      due_date: body.dueDate ?? null,
+      bg_color: body.bgColor ?? null,
+      assignee_ids: body.assigneeIds ?? [],
     }),
 
   /** PATCH /tasks/:taskId — частичное обновление задачи */
-  updateTask: (taskId: string, body: UpdateTaskRequest): Promise<Task> =>
-    apiClient.patch<Task>(`/tasks/${taskId}`, {
+  updateTask: (taskId: string, body: UpdateTaskRequest): Promise<TaskApiResponse> =>
+    apiClient.patch<TaskApiResponse>(`/tasks/${taskId}`, {
       title: body.title,
       description: body.description,
       status: body.status,
       priority: body.priority,
       due_date: body.dueDate,
+      bg_color: body.bgColor,
       assignee_ids: body.assigneeIds,
     }),
 
@@ -108,8 +117,8 @@ export const tasksApi = {
     apiClient.delete<void>(`/tasks/${taskId}`),
 
   /** PATCH /tasks/:taskId/move — переместить задачу в другую колонку */
-  moveTask: (taskId: string, body: MoveTaskRequest): Promise<Task> =>
-    apiClient.patch<Task>(`/tasks/${taskId}/move`, {
+  moveTask: (taskId: string, body: MoveTaskRequest): Promise<TaskApiResponse> =>
+    apiClient.patch<TaskApiResponse>(`/tasks/${taskId}/move`, {
       column_id: body.columnId,
       position: body.position,
     }),

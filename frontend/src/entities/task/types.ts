@@ -39,6 +39,7 @@ export interface Task {
   totalTrackedSeconds: number
   pomodoroSessionsCount: number
   recurring: RecurringSettings | null
+  bgColor?: string | null
   createdAt: string
   updatedAt: string
 }

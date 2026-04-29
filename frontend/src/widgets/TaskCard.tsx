@@ -1,9 +1,12 @@
 import type { DragEvent } from 'react'
 import type { Task } from '@/entities/task/types'
+import type { BoardMember } from '@/entities/board/types'
 import type { Priority } from '@/shared/types/task'
+import { getTaskColorClasses } from '@/entities/task/taskColors'
 
 interface TaskCardProps {
   task: Task
+  members: BoardMember[]
   onClick?: () => void
   onDragStart?: (e: DragEvent<HTMLDivElement>) => void
 }
@@ -41,10 +44,35 @@ function getChecklistProgress(task: Task): { completed: number; total: number } 
   return { completed, total }
 }
 
-export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+}
+
+const AVATAR_BG = [
+  'bg-indigo-500', 'bg-rose-500', 'bg-amber-500',
+  'bg-teal-500', 'bg-violet-500', 'bg-sky-500', 'bg-pink-500',
+]
+
+function avatarBg(userId: string): string {
+  let hash = 0
+  for (let i = 0; i < userId.length; i++) hash = (hash * 31 + userId.charCodeAt(i)) >>> 0
+  return AVATAR_BG[hash % AVATAR_BG.length]
+}
+
+export function TaskCard({ task, members, onClick, onDragStart }: TaskCardProps) {
   const checklistProgress = getChecklistProgress(task)
   const trackedTime = formatTrackedTime(task.totalTrackedSeconds)
   const dueDate = task.dueDate ? formatDueDate(task.dueDate) : null
+  const colorClasses = getTaskColorClasses(task.bgColor)
+
+  const assignees = members.filter((m) => task.assigneeIds.includes(m.userId))
+  const visibleAssignees = assignees.slice(0, 3)
+  const overflow = assignees.length - visibleAssignees.length
 
   return (
     <div
@@ -55,8 +83,8 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
       onClick={onClick}
       onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick() : undefined}
       className={[
-        'rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
-        'px-3 py-2.5 shadow-sm',
+        'rounded-lg border px-3 py-2.5 shadow-sm',
+        colorClasses,
         onDragStart ? 'cursor-grab active:cursor-grabbing active:opacity-50' : '',
         onClick ? 'hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all' : '',
       ].join(' ')}
@@ -82,26 +110,20 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
       {/* Meta row */}
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {/* Priority */}
-        <span
-          className={`rounded px-1.5 py-0.5 text-xs font-medium capitalize ${PRIORITY_BADGE[task.priority]}`}
-        >
+        <span className={`rounded px-1.5 py-0.5 text-xs font-medium capitalize ${PRIORITY_BADGE[task.priority]}`}>
           {task.priority}
         </span>
 
         {/* Due date */}
         {dueDate && (
-          <span
-            className={`text-xs ${dueDate.overdue ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}
-          >
+          <span className={`text-xs ${dueDate.overdue ? 'text-red-500 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
             {dueDate.overdue ? '⚠ ' : ''}{dueDate.label}
           </span>
         )}
 
         {/* Checklist progress */}
         {checklistProgress && (
-          <span
-            className={`text-xs ${checklistProgress.completed === checklistProgress.total ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}
-          >
+          <span className={`text-xs ${checklistProgress.completed === checklistProgress.total ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
             ✓ {checklistProgress.completed}/{checklistProgress.total}
           </span>
         )}
@@ -111,6 +133,36 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
           <span className="text-xs text-gray-400 dark:text-gray-500">⏱ {trackedTime}</span>
         )}
       </div>
+
+      {/* Assignees */}
+      {assignees.length > 0 && (
+        <div className="mt-2.5 flex items-center gap-0.5">
+          {visibleAssignees.map((member) => (
+            member.avatarUrl ? (
+              <img
+                key={member.userId}
+                src={member.avatarUrl}
+                alt={member.name}
+                title={member.name}
+                className="-ml-0 first:ml-0 h-5 w-5 rounded-full border border-white dark:border-gray-700 object-cover ring-1 ring-white dark:ring-gray-800"
+              />
+            ) : (
+              <div
+                key={member.userId}
+                title={member.name}
+                className={`flex h-5 w-5 items-center justify-center rounded-full border border-white dark:border-gray-700 text-[9px] font-bold text-white ring-1 ring-white dark:ring-gray-800 ${avatarBg(member.userId)}`}
+              >
+                {getInitials(member.name)}
+              </div>
+            )
+          ))}
+          {overflow > 0 && (
+            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-300 dark:bg-gray-600 text-[9px] font-bold text-gray-600 dark:text-gray-300 border border-white dark:border-gray-700">
+              +{overflow}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

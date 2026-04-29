@@ -93,14 +93,26 @@ boardsRouter.get('/:id', async (c) => {
     return c.json({ error: 'Not a member of this workspace' }, 403)
   }
 
-  const [{ data: columns }, { data: tasks }] = await Promise.all([
+  const [{ data: columns }, { data: tasks }, { data: assignees }] = await Promise.all([
     supabase.from('columns').select('*').eq('board_id', boardId).order('position'),
     supabase.from('tasks').select('*').eq('board_id', boardId).eq('is_archived', false).order('position'),
+    supabase.from('task_assignees').select('task_id, user_id').eq('board_id', boardId),
   ])
+
+  const assigneeMap = (assignees ?? []).reduce<Record<string, string[]>>((acc, row) => {
+    if (!acc[row.task_id]) acc[row.task_id] = []
+    acc[row.task_id].push(row.user_id)
+    return acc
+  }, {})
+
+  const tasksWithAssignees = (tasks ?? []).map((t) => ({
+    ...t,
+    assignee_ids: assigneeMap[t.id] ?? [],
+  }))
 
   const columnsWithTasks = (columns ?? []).map((col) => ({
     ...col,
-    tasks: (tasks ?? []).filter((t) => t.column_id === col.id),
+    tasks: tasksWithAssignees.filter((t) => t.column_id === col.id),
   }))
 
   return c.json({ ...board, columns: columnsWithTasks })

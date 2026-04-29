@@ -107,7 +107,7 @@ export function CalendarPage() {
             </div>
             <div className="space-y-2">
               {group.tasks.map((task) => (
-                <TaskCard key={task.id} task={task} onClick={() => setSelectedTask(task)} />
+                <TaskCard key={task.id} task={task} members={[]} onClick={() => setSelectedTask(task)} />
               ))}
             </div>
           </section>
@@ -126,7 +126,7 @@ export function CalendarPage() {
             </div>
             <div className="space-y-2">
               {noDate.map((task) => (
-                <TaskCard key={task.id} task={task} onClick={() => setSelectedTask(task)} />
+                <TaskCard key={task.id} task={task} members={[]} onClick={() => setSelectedTask(task)} />
               ))}
             </div>
           </section>
@@ -148,7 +148,12 @@ export function CalendarPage() {
       </div>
 
       {selectedTask && (
-        <TaskModal task={selectedTask} onClose={() => setSelectedTask(null)} />
+        <TaskModal
+          mode={{ kind: 'edit', task: selectedTask }}
+          members={[]}
+          onClose={() => setSelectedTask(null)}
+          onSubmit={() => setSelectedTask(null)}
+        />
       )}
     </AppShell>
   )

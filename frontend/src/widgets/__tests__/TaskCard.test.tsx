@@ -34,21 +34,21 @@ function makeTask(overrides: Partial<Task> = {}): Task {
 describe('TaskCard', () => {
   describe('title', () => {
     it('renders task title', () => {
-      render(<TaskCard task={makeTask({ title: 'Write release notes' })} />)
+      render(<TaskCard members={[]} task={makeTask({ title: 'Write release notes' })} />)
       expect(screen.getByText('Write release notes')).toBeInTheDocument()
     })
   })
 
   describe('priority', () => {
     it('renders priority badge text', () => {
-      render(<TaskCard task={makeTask({ priority: 'high' })} />)
+      render(<TaskCard members={[]} task={makeTask({ priority: 'high' })} />)
       expect(screen.getByText('high')).toBeInTheDocument()
     })
 
     it.each(['low', 'medium', 'high', 'urgent'] as const)(
       'renders priority "%s"',
       (priority) => {
-        render(<TaskCard task={makeTask({ priority })} />)
+        render(<TaskCard members={[]} task={makeTask({ priority })} />)
         expect(screen.getByText(priority)).toBeInTheDocument()
       },
     )
@@ -57,19 +57,19 @@ describe('TaskCard', () => {
   describe('due date', () => {
     it('renders formatted future due date', () => {
       // Фиксированная дата в далёком будущем — никогда не станет overdue
-      render(<TaskCard task={makeTask({ dueDate: '2099-06-15T00:00:00Z' })} />)
+      render(<TaskCard members={[]} task={makeTask({ dueDate: '2099-06-15T00:00:00Z' })} />)
       expect(screen.getByText(/jun 15/i)).toBeInTheDocument()
     })
 
     it('shows overdue indicator for past due date', () => {
-      render(<TaskCard task={makeTask({ dueDate: '2020-01-01T00:00:00Z' })} />)
+      render(<TaskCard members={[]} task={makeTask({ dueDate: '2020-01-01T00:00:00Z' })} />)
       // Компонент добавляет "⚠ " перед датой при overdue
       const dateEl = screen.getByText(/jan 1/i)
       expect(dateEl.textContent).toMatch(/⚠/)
     })
 
     it('hides due date when null', () => {
-      render(<TaskCard task={makeTask({ dueDate: null })} />)
+      render(<TaskCard members={[]} task={makeTask({ dueDate: null })} />)
       // Никакого элемента с датой быть не должно
       expect(screen.queryByText(/jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec/i)).not.toBeInTheDocument()
     })
@@ -78,13 +78,13 @@ describe('TaskCard', () => {
   describe('interaction', () => {
     it('calls onClick when card is clicked', async () => {
       const handleClick = vi.fn()
-      render(<TaskCard task={makeTask()} onClick={handleClick} />)
+      render(<TaskCard members={[]} task={makeTask()} onClick={handleClick} />)
       await userEvent.click(screen.getByRole('button'))
       expect(handleClick).toHaveBeenCalledOnce()
     })
 
     it('has no button role when onClick is not provided', () => {
-      render(<TaskCard task={makeTask()} />)
+      render(<TaskCard members={[]} task={makeTask()} />)
       expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
