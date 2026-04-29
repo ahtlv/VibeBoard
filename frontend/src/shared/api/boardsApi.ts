@@ -17,6 +17,12 @@ export interface UpdateBoardRequest {
 
 export interface CreateColumnRequest {
   title: string
+  color?: string | null
+}
+
+export interface UpdateColumnRequest {
+  title?: string
+  color?: string | null
 }
 
 // ── response DTOs ─────────────────────────────────────────────────────────────
@@ -37,6 +43,7 @@ interface ColumnApiResponse {
   board_id: string
   title: string
   position: number
+  color: string | null
   tasks: TaskApiResponse[]
 }
 
@@ -76,6 +83,7 @@ function mapBoardDetail(r: BoardDetailApiResponse): Board {
       boardId: col.board_id,
       title: col.title,
       position: col.position,
+      color: col.color ?? null,
       tasks: col.tasks.map(mapTask),
     })),
     createdAt: r.created_at,
@@ -111,11 +119,18 @@ export const boardsApi = {
   /** POST /columns — добавить колонку */
   createColumn: (boardId: string, body: CreateColumnRequest): Promise<Column> =>
     apiClient
-      .post<{ id: string; board_id: string; title: string; position: number }>('/columns', {
+      .post<{ id: string; board_id: string; title: string; position: number; color: string | null }>('/columns', {
         board_id: boardId,
         title: body.title,
+        color: body.color ?? null,
       })
-      .then((r) => ({ id: r.id, boardId: r.board_id, title: r.title, position: r.position, tasks: [] })),
+      .then((r) => ({ id: r.id, boardId: r.board_id, title: r.title, position: r.position, color: r.color, tasks: [] })),
+
+  /** PATCH /columns/:id — обновить название и/или цвет */
+  updateColumn: (columnId: string, body: UpdateColumnRequest): Promise<Column> =>
+    apiClient
+      .patch<{ id: string; board_id: string; title: string; position: number; color: string | null }>(`/columns/${columnId}`, body)
+      .then((r) => ({ id: r.id, boardId: r.board_id, title: r.title, position: r.position, color: r.color, tasks: [] })),
 
   /** PATCH /boards/:boardId — обновить доску */
   updateBoard: (boardId: string, body: UpdateBoardRequest): Promise<BoardSummary> =>
@@ -126,4 +141,12 @@ export const boardsApi = {
   /** DELETE /boards/:boardId — архивировать доску */
   deleteBoard: (boardId: string): Promise<void> =>
     apiClient.delete<void>(`/boards/${boardId}`),
+
+  /** DELETE /columns/:id — удалить колонку */
+  deleteColumn: (columnId: string): Promise<void> =>
+    apiClient.delete<void>(`/columns/${columnId}`),
+
+  /** POST /boards/:id/columns/reorder — переставить колонки */
+  reorderColumns: (boardId: string, columnIds: string[]): Promise<void> =>
+    apiClient.post<void>(`/boards/${boardId}/columns/reorder`, { columnIds }),
 }

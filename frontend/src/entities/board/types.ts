@@ -20,6 +20,7 @@ export interface Column {
   boardId: string
   title: string
   position: number
+  color?: string | null
   tasks: Task[]
 }
 

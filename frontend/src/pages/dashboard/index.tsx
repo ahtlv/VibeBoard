@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/shared/ui/AppShell'
 import { BoardHeader, KanbanColumn, TaskModal } from '@/widgets'
@@ -11,6 +11,8 @@ import type { Task } from '@/entities/task/types'
 import type { WorkspaceRole } from '@/shared/types/workspace'
 import { boardMembersStore } from '@/shared/lib/boardMembersStore'
 import { boardMembersApi } from '@/shared/api/boardMembersApi'
+import { DEFAULT_COLUMN_COLORS } from '@/entities/board/columnColors'
+import { useAuth } from '@/features/auth/store'
 
 type LoadState = 'loading' | 'error' | 'empty' | 'ready'
 
@@ -26,6 +28,9 @@ export function DashboardPage() {
   const [members, setMembers] = useState<BoardMember[]>([])
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [creatingWorkspace, setCreatingWorkspace] = useState(false)
+  const [draggingColId, setDraggingColId] = useState<string | null>(null)
+  const [dragOverColId, setDragOverColId] = useState<string | null>(null)
+  useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const boardIdFromUrl = searchParams.get('board')
@@ -90,7 +95,7 @@ export function DashboardPage() {
 
     Promise.all([
       boardsApi.getBoard(activeBoardId),
-      boardMembersApi.list(activeBoardId),
+      boardMembersApi.list(activeBoardId).catch(() => [] as BoardMember[]),
     ])
       .then(([boardData, membersData]) => {
         if (!cancelled) {
@@ -201,23 +206,88 @@ export function DashboardPage() {
     }
   }
 
-  async function handleAddColumn(title: string) {
+  async function handleAddColumn(title: string, color: string | null) {
     if (!board || !activeBoardId) return
 
     const tempId = `temp-col-${Date.now()}`
-    const optimistic: Column = { id: tempId, boardId: activeBoardId, title, position: board.columns.length, tasks: [] }
+    const optimistic: Column = { id: tempId, boardId: activeBoardId, title, color, position: board.columns.length, tasks: [] }
     setBoard((prev) => prev ? { ...prev, columns: [...prev.columns, optimistic] } : prev)
 
     try {
       const real = await boardsApi.createColumn(activeBoardId, { title })
       setBoard((prev) => prev
-        ? { ...prev, columns: prev.columns.map((c) => c.id === tempId ? real : c) }
+        ? { ...prev, columns: prev.columns.map((c) => c.id === tempId ? { ...real, color } : c) }
         : prev)
     } catch {
       setBoard((prev) => prev
         ? { ...prev, columns: prev.columns.filter((c) => c.id !== tempId) }
         : prev)
     }
+  }
+
+  function handleUpdateColumn(columnId: string, patch: { title?: string; color?: string | null }) {
+    const snapshot = board
+    setBoard((prev) => prev
+      ? { ...prev, columns: prev.columns.map((c) => c.id === columnId ? { ...c, ...patch } : c) }
+      : prev)
+
+    boardsApi.updateColumn(columnId, patch).catch(() => {
+      setBoard(snapshot)
+    })
+  }
+
+  function handleDeleteColumn(columnId: string) {
+    const snapshot = board
+    setBoard((prev) => prev
+      ? { ...prev, columns: prev.columns.filter((c) => c.id !== columnId) }
+      : prev)
+
+    boardsApi.deleteColumn(columnId).catch(() => {
+      setBoard(snapshot)
+    })
+  }
+
+  function handleColumnDragStart(e: DragEvent<HTMLDivElement>, columnId: string) {
+    e.dataTransfer.setData('application/column-id', columnId)
+    e.dataTransfer.effectAllowed = 'move'
+    setDraggingColId(columnId)
+  }
+
+  function handleColumnDragOver(e: DragEvent<HTMLDivElement>, columnId: string) {
+    if (!e.dataTransfer.types.includes('application/column-id')) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverColId !== columnId) setDragOverColId(columnId)
+  }
+
+  function handleColumnDrop(e: DragEvent<HTMLDivElement>, targetColumnId: string) {
+    e.preventDefault()
+    const sourceId = e.dataTransfer.getData('application/column-id')
+    setDraggingColId(null)
+    setDragOverColId(null)
+    if (!sourceId || sourceId === targetColumnId || !board || !activeBoardId) return
+
+    const cols = board.columns
+    const fromIdx = cols.findIndex((c) => c.id === sourceId)
+    const toIdx = cols.findIndex((c) => c.id === targetColumnId)
+    if (fromIdx === -1 || toIdx === -1) return
+
+    const reordered = [...cols]
+    const [moved] = reordered.splice(fromIdx, 1)
+    reordered.splice(toIdx, 0, moved)
+    const withPositions = reordered.map((c, i) => ({ ...c, position: i }))
+
+    const snapshot = board
+    setBoard((prev) => prev ? { ...prev, columns: withPositions } : prev)
+
+    boardsApi.reorderColumns(activeBoardId, reordered.map((c) => c.id)).catch(() => {
+      setBoard(snapshot)
+    })
+  }
+
+  function handleColumnDragEnd() {
+    setDraggingColId(null)
+    setDragOverColId(null)
   }
 
   function handleMoveTask(taskId: string, fromColumnId: string, toColumnId: string) {
@@ -361,16 +431,40 @@ export function DashboardPage() {
                 </div>
               ) : (
                 <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto">
-                  {board?.columns.map((column) => (
-                    <KanbanColumn
-                      key={column.id}
-                      column={column}
-                      onAddTask={(title) => handleAddTask(column.id, title)}
-                      onMoveTask={handleMoveTask}
-                      onTaskClick={setSelectedTask}
-                    />
-                  ))}
-                  <AddColumnButton onAdd={handleAddColumn} />
+                  {board?.columns.map((column) => {
+                    const canEdit = ['owner', 'admin'].includes(workspace?.role ?? '')
+                    const isBeingDragged = draggingColId === column.id
+                    const isDragTarget = dragOverColId === column.id && draggingColId !== column.id
+                    return (
+                      <div
+                        key={column.id}
+                        draggable={canEdit}
+                        onDragStart={(e) => handleColumnDragStart(e, column.id)}
+                        onDragOver={(e) => handleColumnDragOver(e, column.id)}
+                        onDrop={(e) => handleColumnDrop(e, column.id)}
+                        onDragEnd={handleColumnDragEnd}
+                        className={[
+                          'transition-all',
+                          isBeingDragged ? 'opacity-40' : '',
+                          isDragTarget ? 'ring-2 ring-indigo-400 rounded-xl' : '',
+                        ].join(' ')}
+                      >
+                        <KanbanColumn
+                          column={column}
+                          onAddTask={(title) => handleAddTask(column.id, title)}
+                          onMoveTask={handleMoveTask}
+                          onTaskClick={setSelectedTask}
+                          onUpdateColumn={handleUpdateColumn}
+                          onDeleteColumn={handleDeleteColumn}
+                          canEdit={canEdit}
+                        />
+                      </div>
+                    )
+                  })}
+                  <AddColumnButton
+                    onAdd={handleAddColumn}
+                    canAdd={['owner', 'admin'].includes(workspace?.role ?? '')}
+                  />
                 </div>
               )}
             </>
@@ -456,26 +550,30 @@ function removeTaskFromColumn(board: Board, columnId: string, taskId: string): B
 
 // ── AddColumnButton ───────────────────────────────────────────────────────────
 
-function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
+function AddColumnButton({ onAdd, canAdd = false }: { onAdd: (title: string, color: string | null) => void; canAdd?: boolean }) {
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState('')
+  const [selectedColor, setSelectedColor] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const customInputRef = useRef<HTMLInputElement>(null)
 
   function open() {
     setIsEditing(true)
     setDraft('')
+    setSelectedColor(null)
     setTimeout(() => inputRef.current?.focus(), 0)
   }
 
   function cancel() {
     setIsEditing(false)
     setDraft('')
+    setSelectedColor(null)
   }
 
   function submit() {
     const title = draft.trim()
     if (!title) return
-    onAdd(title)
+    onAdd(title, selectedColor)
     cancel()
   }
 
@@ -484,45 +582,127 @@ function AddColumnButton({ onAdd }: { onAdd: (title: string) => void }) {
     if (e.key === 'Escape') cancel()
   }
 
-  const card = 'w-64 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900'
+  function handleCustomColor(e: ChangeEvent<HTMLInputElement>) {
+    setSelectedColor(e.target.value)
+  }
+
+  const card = 'self-start w-64 shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 overflow-hidden'
   const btnBase = 'flex-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors'
 
   if (isEditing) {
     return (
-      <div className={`${card} p-3 flex flex-col gap-2`}>
-        <input
-          ref={inputRef}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Column name…"
-          className="w-full rounded-md border border-indigo-500 dark:border-indigo-400 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none ring-1 ring-indigo-500 dark:ring-indigo-400"
-        />
-        <div className="flex gap-2">
-          <button
-            onClick={submit}
-            disabled={!draft.trim()}
-            className={`${btnBase} bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50`}
-          >
-            Add
-          </button>
-          <button
-            onClick={cancel}
-            className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700`}
-          >
-            Cancel
-          </button>
+      <div className={`${card} flex flex-col`}>
+        {selectedColor && <div className="h-1.5 w-full" style={{ backgroundColor: selectedColor }} />}
+        <div className="p-3 flex flex-col gap-2">
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Column name…"
+            className="w-full rounded-md border border-indigo-500 dark:border-indigo-400 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none ring-1 ring-indigo-500 dark:ring-indigo-400"
+          />
+
+          {/* Палитра */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* No color */}
+            <button
+              type="button"
+              title="No color"
+              onClick={() => setSelectedColor(null)}
+              className={[
+                'h-5 w-5 rounded-full border-2 flex items-center justify-center bg-gray-100 dark:bg-gray-700 transition-all',
+                selectedColor === null
+                  ? 'border-indigo-500 scale-110'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400',
+              ].join(' ')}
+            >
+              <svg className="h-2.5 w-2.5 text-gray-400" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={2}>
+                <line x1="1" y1="1" x2="11" y2="11" />
+                <line x1="11" y1="1" x2="1" y2="11" />
+              </svg>
+            </button>
+
+            {/* Пресеты */}
+            {DEFAULT_COLUMN_COLORS.map((c) => (
+              <button
+                key={c.name}
+                type="button"
+                title={c.name}
+                onClick={() => setSelectedColor(c.value)}
+                className={[
+                  'h-5 w-5 rounded-full border-2 transition-all',
+                  selectedColor === c.value
+                    ? 'border-indigo-500 scale-110'
+                    : 'border-transparent hover:scale-105',
+                ].join(' ')}
+                style={{ backgroundColor: c.value }}
+              />
+            ))}
+
+            {/* Custom */}
+            <button
+              type="button"
+              title="Custom color"
+              onClick={() => customInputRef.current?.click()}
+              className={[
+                'h-5 w-5 rounded-full border-2 transition-all flex items-center justify-center',
+                selectedColor !== null && !DEFAULT_COLUMN_COLORS.some((c) => c.value === selectedColor)
+                  ? 'border-indigo-500 scale-110'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 bg-gradient-to-br from-rose-400 via-violet-400 to-sky-400',
+              ].join(' ')}
+              style={
+                selectedColor !== null && !DEFAULT_COLUMN_COLORS.some((c) => c.value === selectedColor)
+                  ? { backgroundColor: selectedColor }
+                  : undefined
+              }
+            >
+              {(selectedColor === null || DEFAULT_COLUMN_COLORS.some((c) => c.value === selectedColor)) && (
+                <svg className="h-2.5 w-2.5 text-white drop-shadow" viewBox="0 0 12 12" fill="currentColor">
+                  <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+            <input
+              ref={customInputRef}
+              type="color"
+              className="sr-only"
+              value={selectedColor ?? '#6366f1'}
+              onChange={handleCustomColor}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={submit}
+              disabled={!draft.trim()}
+              className={`${btnBase} bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50`}
+            >
+              Add
+            </button>
+            <button
+              onClick={cancel}
+              className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700`}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
+  if (!canAdd) return null
+
   return (
     <button
       onClick={open}
-      className={`${card} flex items-center px-3 py-2.5 text-sm font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors`}
+      className="self-start shrink-0 flex items-center gap-1.5 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-400 dark:text-gray-500 hover:border-indigo-400 hover:text-indigo-500 dark:hover:border-indigo-600 dark:hover:text-indigo-400 transition-colors"
     >
-      + Add column
+      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+      </svg>
+      Add column
     </button>
   )
 }

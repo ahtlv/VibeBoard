@@ -1,10 +1,12 @@
 import { apiClient } from './client'
+import type { WorkspaceRole } from '@/shared/types/workspace'
 
 export interface WorkspaceResponse {
   id: string
   name: string
   description: string | null
   owner_id: string
+  role: WorkspaceRole
   created_at: string
   updated_at: string
 }

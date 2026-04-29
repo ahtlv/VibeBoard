@@ -235,6 +235,16 @@ boardsRouter.post('/:id/members', async (c) => {
     return c.json({ error: error.message }, 500)
   }
 
+  // Если пользователь существует — добавляем в workspace_members (если ещё не там)
+  if (existingUser) {
+    await supabase
+      .from('workspace_members')
+      .upsert(
+        { workspace_id: workspaceId, user_id: existingUser.id, role: 'member' },
+        { onConflict: 'workspace_id,user_id', ignoreDuplicates: true },
+      )
+  }
+
   return c.json({
     id: data.id,
     boardId: data.board_id,
@@ -300,6 +310,36 @@ boardsRouter.delete('/:id/members/:memberId', async (c) => {
   if (error) return c.json({ error: error.message }, 500)
 
   return new Response(null, { status: 204 })
+})
+
+// POST /api/v1/boards/:id/columns/reorder
+const reorderColumnsSchema = z.object({
+  columnIds: z.array(z.string().uuid()).min(1),
+})
+
+boardsRouter.post('/:id/columns/reorder', async (c) => {
+  const userId = c.get('userId')
+  const boardId = c.req.param('id')
+  const supabase = getSupabase(c.env)
+
+  const body = await c.req.json().catch(() => null)
+  const parsed = reorderColumnsSchema.safeParse(body)
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 422)
+
+  const workspaceId = await getBoardWorkspace(supabase, boardId)
+  if (!workspaceId) return c.json({ error: 'Board not found' }, 404)
+
+  const membership = await isMember(supabase, workspaceId, userId)
+  if (!membership) return c.json({ error: 'Not a member of this workspace' }, 403)
+  if (!['owner', 'admin'].includes(membership.role)) return c.json({ error: 'Only admins can reorder columns' }, 403)
+
+  const updates = parsed.data.columnIds.map((id, position) => ({ id, position, updated_at: new Date().toISOString() }))
+
+  const { error } = await supabase.from('columns').upsert(updates, { onConflict: 'id' })
+
+  if (error) return c.json({ error: error.message }, 500)
+
+  return c.body(null, 204)
 })
 
 // ── DELETE board (soft archive) ───────────────────────────────────────────────
