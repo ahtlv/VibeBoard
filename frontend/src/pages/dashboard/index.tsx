@@ -29,7 +29,9 @@ export function DashboardPage() {
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [creatingWorkspace, setCreatingWorkspace] = useState(false)
   const [draggingColId, setDraggingColId] = useState<string | null>(null)
-  const [dragOverColId, setDragOverColId] = useState<string | null>(null)
+  const dragSnapshotRef = useRef<Board | null>(null)
+  const dropSucceededRef = useRef(false)
+  const lastDragOverRef = useRef<string | null>(null)
   useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -248,46 +250,52 @@ export function DashboardPage() {
   }
 
   function handleColumnDragStart(e: DragEvent<HTMLDivElement>, columnId: string) {
+    if (e.target !== e.currentTarget) return
     e.dataTransfer.setData('application/column-id', columnId)
     e.dataTransfer.effectAllowed = 'move'
     setDraggingColId(columnId)
+    dragSnapshotRef.current = board
+    dropSucceededRef.current = false
+    lastDragOverRef.current = columnId
   }
 
-  function handleColumnDragOver(e: DragEvent<HTMLDivElement>, columnId: string) {
+  function handleColumnDragOver(e: DragEvent<HTMLDivElement>, targetColumnId: string) {
     if (!e.dataTransfer.types.includes('application/column-id')) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    if (dragOverColId !== columnId) setDragOverColId(columnId)
+    if (lastDragOverRef.current === targetColumnId) return
+    lastDragOverRef.current = targetColumnId
+    setBoard((prev) => {
+      if (!prev || !draggingColId || draggingColId === targetColumnId) return prev
+      const cols = prev.columns
+      const fromIdx = cols.findIndex((c) => c.id === draggingColId)
+      const toIdx = cols.findIndex((c) => c.id === targetColumnId)
+      if (fromIdx === -1 || toIdx === -1) return prev
+      const reordered = [...cols]
+      ;[reordered[fromIdx], reordered[toIdx]] = [reordered[toIdx], reordered[fromIdx]]
+      return { ...prev, columns: reordered.map((c, i) => ({ ...c, position: i })) }
+    })
   }
 
-  function handleColumnDrop(e: DragEvent<HTMLDivElement>, targetColumnId: string) {
+  function handleColumnDrop(e: DragEvent<HTMLDivElement>, _targetColumnId: string) {
     e.preventDefault()
-    const sourceId = e.dataTransfer.getData('application/column-id')
-    setDraggingColId(null)
-    setDragOverColId(null)
-    if (!sourceId || sourceId === targetColumnId || !board || !activeBoardId) return
-
-    const cols = board.columns
-    const fromIdx = cols.findIndex((c) => c.id === sourceId)
-    const toIdx = cols.findIndex((c) => c.id === targetColumnId)
-    if (fromIdx === -1 || toIdx === -1) return
-
-    const reordered = [...cols]
-    const [moved] = reordered.splice(fromIdx, 1)
-    reordered.splice(toIdx, 0, moved)
-    const withPositions = reordered.map((c, i) => ({ ...c, position: i }))
-
-    const snapshot = board
-    setBoard((prev) => prev ? { ...prev, columns: withPositions } : prev)
-
-    boardsApi.reorderColumns(activeBoardId, reordered.map((c) => c.id)).catch(() => {
-      setBoard(snapshot)
+    if (!e.dataTransfer.types.includes('application/column-id')) return
+    if (!board || !activeBoardId) return
+    dropSucceededRef.current = true
+    const snapshot = dragSnapshotRef.current
+    boardsApi.reorderColumns(activeBoardId, board.columns.map((c) => c.id)).catch(() => {
+      if (snapshot) setBoard(snapshot)
     })
   }
 
   function handleColumnDragEnd() {
+    if (!dropSucceededRef.current && dragSnapshotRef.current) {
+      setBoard(dragSnapshotRef.current)
+    }
     setDraggingColId(null)
-    setDragOverColId(null)
+    dragSnapshotRef.current = null
+    dropSucceededRef.current = false
+    lastDragOverRef.current = null
   }
 
   function handleMoveTask(taskId: string, fromColumnId: string, toColumnId: string) {
@@ -434,7 +442,6 @@ export function DashboardPage() {
                   {board?.columns.map((column) => {
                     const canEdit = ['owner', 'admin'].includes(workspace?.role ?? '')
                     const isBeingDragged = draggingColId === column.id
-                    const isDragTarget = dragOverColId === column.id && draggingColId !== column.id
                     return (
                       <div
                         key={column.id}
@@ -444,9 +451,9 @@ export function DashboardPage() {
                         onDrop={(e) => handleColumnDrop(e, column.id)}
                         onDragEnd={handleColumnDragEnd}
                         className={[
-                          'transition-all',
+                          'transition-all select-none',
+                          canEdit ? 'cursor-grab active:cursor-grabbing' : '',
                           isBeingDragged ? 'opacity-40' : '',
-                          isDragTarget ? 'ring-2 ring-indigo-400 rounded-xl' : '',
                         ].join(' ')}
                       >
                         <KanbanColumn

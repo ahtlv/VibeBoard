@@ -333,11 +333,14 @@ boardsRouter.post('/:id/columns/reorder', async (c) => {
   if (!membership) return c.json({ error: 'Not a member of this workspace' }, 403)
   if (!['owner', 'admin'].includes(membership.role)) return c.json({ error: 'Only admins can reorder columns' }, 403)
 
-  const updates = parsed.data.columnIds.map((id, position) => ({ id, position, updated_at: new Date().toISOString() }))
-
-  const { error } = await supabase.from('columns').upsert(updates, { onConflict: 'id' })
-
-  if (error) return c.json({ error: error.message }, 500)
+  const timestamp = new Date().toISOString()
+  const results = await Promise.all(
+    parsed.data.columnIds.map((id, position) =>
+      supabase.from('columns').update({ position, updated_at: timestamp }).eq('id', id)
+    )
+  )
+  const failed = results.find((r) => r.error)
+  if (failed?.error) return c.json({ error: failed.error.message }, 500)
 
   return c.body(null, 204)
 })
