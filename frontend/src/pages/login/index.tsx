@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { authApi } from '@/shared/api/authApi'
+import { useAuth } from '@/features/auth/store'
 import { ThemeToggle } from '@/shared/ui/ThemeToggle'
 
 interface FormValues {
@@ -31,9 +32,16 @@ function validate(values: FormValues): FormErrors {
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { status } = useAuth()
   const [values, setValues] = useState<FormValues>({ email: '', password: '' })
   const [errors, setErrors] = useState<FormErrors>({})
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [status, navigate])
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -57,8 +65,7 @@ export function LoginPage() {
         }
         return
       }
-      // onAuthStateChange in AuthProvider handles the rest
-      navigate('/dashboard', { replace: true })
+      // navigation happens in useEffect once status becomes 'authenticated'
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {

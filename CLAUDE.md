@@ -11,11 +11,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Layer | Technology |
 |-------|-----------|
 | Frontend | React + TypeScript + Tailwind CSS (SPA) |
-| Backend | Python + FastAPI (async REST API) |
-| Database | PostgreSQL |
-| Cache / Queue | Redis + Celery |
+| Backend | TypeScript + Hono (Cloudflare Workers) |
+| Database | Supabase (PostgreSQL + Auth + Storage) |
 | Payments | Stripe |
-| Infra | Docker, CI/CD |
+| Infra | Docker (local dev), Wrangler (deploy) |
 
 ## Architecture
 
@@ -24,14 +23,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 VibeBoard/
 ├── frontend/           # React SPA
-├── backend/            # FastAPI API server
+├── backend-ts/         # Hono API (Cloudflare Workers)
+├── docs/               # новые продуктовые документы (ТЗ, roadmap, ADR)
+├── changelog/          # CHANGELOG-YYYY-MM-DD-<тема>.md
+├── databases/          # дампы схемы перед миграциями
 ├── CLAUDE.md           # этот файл — загружается всегда
 ├── frontend/CLAUDE.md  # frontend-правила — загружается лениво
-├── backend/CLAUDE.md   # backend-правила — загружается лениво
-├── TZ.md               # Техническое задание
+├── backend-ts/CLAUDE.md  # backend-правила — загружается лениво
 └── .claude/
-    ├── rules/          # правила стиля, тестирования, безопасности
-    └── skills/         # скиллы проекта (единственное место — НЕ .agents/)
+    ├── rules/          # правила стиля, тестирования, безопасности, рефакторинга
+    └── skills/         # скиллы проекта — ЕДИНСТВЕННОЕ место
         ├── supabase                      # работа с Supabase MCP
         ├── supabase-postgres-best-practices  # оптимизация Postgres
         ├── deploy                        # деплой
@@ -39,11 +40,11 @@ VibeBoard/
         └── test-all                      # запуск тестов
 ```
 
-**Скиллы хранятся только в `.claude/skills/`** — папка `.agents/` не используется и не создаётся.
+**Скиллы хранятся только в `.claude/skills/`** — папка `.agents/` существует исторически (legacy), не пополнять.
 
 **Frontend** (`frontend/CLAUDE.md`) — архитектура FSD (app / pages / widgets / features / entities / shared). Все запросы инкапсулированы в API-клиенты (authApi, boardsApi, tasksApi и т.д.). Серверный и UI state разделены.
 
-**Backend** (`backend/CLAUDE.md`) — слои: routers → services → repositories → models. Все ресурсы под префиксом `/api/v1`. JWT auth + refresh tokens. Бизнес-логика только в services, SQL только в repositories.
+**Backend** (`backend-ts/CLAUDE.md`) — **Hono** на **Cloudflare Workers**, TypeScript. Структура: `src/routes/` + `src/middleware/` + `src/lib/`. Аутентификация через Supabase Auth JWT (JWKS). Все ресурсы под префиксом `/api/v1`. Логика находится непосредственно в route handlers.
 
 ## Core Domain Entities
 
@@ -73,9 +74,10 @@ VibeBoard/
 ## API Conventions
 
 - Prefix: `/api/v1`
-- Auth: JWT access + refresh token
-- Errors: единый формат — validation / auth / forbidden / not_found / internal
-- Docs: OpenAPI автогенерация из FastAPI
+- Auth: Bearer JWT (Supabase Auth), верифицируется через JWKS
+- Errors: `{ error: string }` + HTTP-статус (400 / 401 / 403 / 404 / 500)
+- Валидация входных данных: Zod
+- Нет auto-generated OpenAPI — документировать вручную при необходимости
 
 ## Pages
 
