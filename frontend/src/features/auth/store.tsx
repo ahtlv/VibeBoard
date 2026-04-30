@@ -3,6 +3,7 @@ import { supabase } from '@/shared/api/supabaseClient'
 import { setTokenAccessor } from '@/shared/api/client'
 import { authApi } from '@/shared/api/authApi'
 import type { User } from '@/entities/user/types'
+import i18n from '@/shared/i18n'
 
 export type AuthStatus = 'idle' | 'authenticated' | 'unauthenticated'
 
@@ -55,7 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Load our public.users profile from the FastAPI backend
       authApi.getMe()
-        .then((user) => dispatch({ type: 'SET_USER', user }))
+        .then((user) => {
+          if (user.settings.language) i18n.changeLanguage(user.settings.language)
+          dispatch({ type: 'SET_USER', user })
+        })
         .catch(() => dispatch({ type: 'LOGOUT' }))
     })
 

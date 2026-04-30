@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { AppShell } from '@/shared/ui/AppShell'
 import { ApiError } from '@/shared/api/client'
 import { workspacesApi, type WorkspaceMember } from '@/shared/api/workspacesApi'
@@ -17,10 +18,6 @@ function initials(name: string): string {
   return name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 // ── transfer modal ─────────────────────────────────────────────────────────────
 
 interface TransferModalProps {
@@ -32,24 +29,25 @@ interface TransferModalProps {
 }
 
 function TransferModal({ removingMember, candidates, taskCount, onConfirm, onCancel }: TransferModalProps) {
+  const { t } = useTranslation()
   const [transferToId, setTransferToId] = useState(candidates[0]?.id ?? '')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div className="w-full max-w-md rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-6">
         <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          Remove {removingMember.name}?
+          {t('workspace.removeMember', { name: removingMember.name })}
         </h2>
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
           {taskCount > 0
-            ? `${removingMember.name} has ${taskCount} task${taskCount !== 1 ? 's' : ''} assigned. Choose who to transfer them to:`
-            : `${removingMember.name} has no assigned tasks. They will be removed immediately.`}
+            ? t('workspace.hasTasks', { name: removingMember.name, count: taskCount })
+            : t('workspace.noTasks', { name: removingMember.name })}
         </p>
 
         {taskCount > 0 && candidates.length > 0 && (
           <div className="mt-4">
             <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-              Transfer tasks to
+              {t('workspace.transferTo')}
             </label>
             <select
               value={transferToId}
@@ -70,13 +68,13 @@ function TransferModal({ removingMember, candidates, taskCount, onConfirm, onCan
             onClick={onCancel}
             className="rounded-md border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
-            Cancel
+            {t('workspace.cancel')}
           </button>
           <button
             onClick={() => onConfirm(transferToId)}
             className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
           >
-            Remove member
+            {t('workspace.remove')}
           </button>
         </div>
       </div>
@@ -87,6 +85,7 @@ function TransferModal({ removingMember, candidates, taskCount, onConfirm, onCan
 // ── component ─────────────────────────────────────────────────────────────────
 
 export function WorkspacePage() {
+  const { t, i18n } = useTranslation()
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
   const [members, setMembers] = useState<WorkspaceMember[]>([])
   const [currentUserRole, setCurrentUserRole] = useState<WorkspaceRole>('member')
@@ -96,6 +95,10 @@ export function WorkspacePage() {
   const [role, setRole] = useState<'member' | 'admin'>('member')
   const [submitting, setSubmitting] = useState(false)
   const [pendingRemove, setPendingRemove] = useState<WorkspaceMember | null>(null)
+
+  function formatDate(iso: string): string {
+    return new Date(iso).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', year: 'numeric' })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -108,7 +111,6 @@ export function WorkspacePage() {
         const list = await workspacesApi.listMembers(ws.id)
         if (cancelled) return
         setMembers(list)
-        // Определяем роль текущего пользователя по owner_id воркспейса
         const me = list.find((m) => m.user_id === ws.owner_id)
         if (me) setCurrentUserRole(me.role)
       } finally {
@@ -125,12 +127,12 @@ export function WorkspacePage() {
     setSubmitting(true)
     try {
       await workspacesApi.invite(workspaceId, { email: email.trim(), role })
-      toast.success(`Invitation sent to ${email.trim()}`)
+      toast.success(t('workspace.inviteSuccess'))
       setEmail('')
       setRole('member')
       setShowInviteForm(false)
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Failed to send invitation'
+      const msg = err instanceof ApiError ? err.message : t('workspace.error')
       toast.error(msg)
     } finally {
       setSubmitting(false)
@@ -149,9 +151,8 @@ export function WorkspacePage() {
 
   function handleTransferConfirm(_transferToId: string) {
     if (!pendingRemove) return
-    const removedName = pendingRemove.name
     setMembers((prev) => prev.filter((m) => m.id !== pendingRemove.id))
-    toast.success(`${removedName} has been removed from the workspace.`)
+    toast.success(t('workspace.inviteSuccess'))
     setPendingRemove(null)
   }
 
@@ -162,7 +163,7 @@ export function WorkspacePage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center py-24 text-sm text-gray-400">Loading…</div>
+        <div className="flex items-center justify-center py-24 text-sm text-gray-400">{t('workspace.loading')}</div>
       </AppShell>
     )
   }
@@ -181,9 +182,9 @@ export function WorkspacePage() {
 
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Workspace</h1>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t('workspace.title')}</h1>
           <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-            {members.length} member{members.length !== 1 ? 's' : ''}
+            {members.length}
           </p>
         </div>
         {!showInviteForm && (
@@ -191,7 +192,7 @@ export function WorkspacePage() {
             onClick={() => setShowInviteForm(true)}
             className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
           >
-            + Invite member
+            + {t('workspace.invite')}
           </button>
         )}
       </div>
@@ -199,12 +200,12 @@ export function WorkspacePage() {
       {showInviteForm && (
         <div className="mb-6 max-w-md rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
           <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-            Invite a new member
+            {t('workspace.invite')}
           </h2>
           <form onSubmit={handleInvite} className="flex flex-col gap-3">
             <div>
               <label htmlFor="invite-email" className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                Email address
+                {t('auth.email')}
               </label>
               <input
                 id="invite-email"
@@ -212,7 +213,7 @@ export function WorkspacePage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="colleague@example.com"
+                placeholder={t('workspace.invitePlaceholder')}
                 disabled={submitting}
                 className="w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
               />
@@ -238,7 +239,7 @@ export function WorkspacePage() {
                 disabled={submitting || !email.trim()}
                 className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? 'Sending…' : 'Send invite'}
+                {submitting ? '...' : t('workspace.invite')}
               </button>
               <button
                 type="button"
@@ -246,7 +247,7 @@ export function WorkspacePage() {
                 disabled={submitting}
                 className="rounded-md border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
               >
-                Cancel
+                {t('workspace.cancel')}
               </button>
             </div>
           </form>
@@ -260,7 +261,7 @@ export function WorkspacePage() {
             <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Member</span>
             <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Email</span>
             <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Role</span>
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Joined</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">{t('workspace.joined')}</span>
             <span />
           </div>
 
@@ -272,14 +273,11 @@ export function WorkspacePage() {
                   👥
                 </div>
                 <p className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">No members yet</p>
-                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                  Invite teammates to collaborate on this workspace
-                </p>
                 <button
                   onClick={() => setShowInviteForm(true)}
                   className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
                 >
-                  + Invite member
+                  + {t('workspace.invite')}
                 </button>
               </li>
             )}
@@ -322,7 +320,7 @@ export function WorkspacePage() {
                     {canRemove ? (
                       <button
                         onClick={() => handleRemoveClick(member)}
-                        title="Remove member"
+                        title={t('workspace.remove')}
                         className="rounded-md p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -338,7 +336,6 @@ export function WorkspacePage() {
             })}
           </ul>
         </div>
-
       </div>
     </AppShell>
   )

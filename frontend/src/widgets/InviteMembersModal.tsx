@@ -20,7 +20,7 @@ const ROLE_BADGE_CLASS: Record<WorkspaceRole, string> = {
 
 interface InviteMembersModalProps {
   members: BoardMember[]
-  onInvite: (email: string, role: WorkspaceRole) => void
+  onInvite: (email: string, role: WorkspaceRole) => Promise<string | null>
   onRemove: (memberId: string) => void
   onChangeRole: (memberId: string, role: WorkspaceRole) => void
   onClose: () => void
@@ -36,6 +36,7 @@ export function InviteMembersModal({
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'admin' | 'member'>('member')
   const [emailError, setEmailError] = useState<string | null>(null)
+  const [inviting, setInviting] = useState(false)
   const [suggestions, setSuggestions] = useState<UserSearchResult[]>([])
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -65,9 +66,9 @@ export function InviteMembersModal({
     inputRef.current?.focus()
   }
 
-  function validateAndSubmit() {
+  async function validateAndSubmit() {
     const trimmed = email.trim()
-    if (!trimmed) return
+    if (!trimmed || inviting) return
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(trimmed)) { setEmailError('Invalid email address'); return }
@@ -75,19 +76,25 @@ export function InviteMembersModal({
     const isDuplicate = members.some((m) => m.email.toLowerCase() === trimmed.toLowerCase())
     if (isDuplicate) { setEmailError('This person is already on the board'); return }
 
-    onInvite(trimmed, role)
-    setEmail('')
+    setInviting(true)
     setEmailError(null)
-    setSuggestions([])
+    const err = await onInvite(trimmed, role)
+    setInviting(false)
+    if (err) {
+      setEmailError(err)
+    } else {
+      setEmail('')
+      setSuggestions([])
+    }
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    validateAndSubmit()
+    void validateAndSubmit()
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') { e.preventDefault(); validateAndSubmit() }
+    if (e.key === 'Enter') { e.preventDefault(); void validateAndSubmit() }
     if (e.key === 'Escape') setSuggestionsOpen(false)
   }
 
@@ -157,10 +164,10 @@ export function InviteMembersModal({
           </select>
           <button
             type="submit"
-            disabled={!email.trim()}
+            disabled={!email.trim() || inviting}
             className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
           >
-            Invite
+            {inviting ? '…' : 'Invite'}
           </button>
         </div>
         {emailError && (

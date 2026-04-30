@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { workspacesApi } from '@/shared/api/workspacesApi'
 
 export function OnboardingPage() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [workspaceName, setWorkspaceName] = useState('')
   const [error, setError] = useState<string | undefined>()
   const [isLoading, setIsLoading] = useState(false)
@@ -12,11 +14,11 @@ export function OnboardingPage() {
     e.preventDefault()
 
     if (!workspaceName.trim()) {
-      setError('Workspace name is required')
+      setError(t('onboarding.nameRequired'))
       return
     }
     if (workspaceName.trim().length < 2) {
-      setError('Workspace name must be at least 2 characters')
+      setError(t('onboarding.nameTooShort'))
       return
     }
 
@@ -26,7 +28,7 @@ export function OnboardingPage() {
       await workspacesApi.createWorkspace({ name: workspaceName.trim() })
       navigate('/dashboard', { replace: true })
     } catch {
-      setError('Failed to create workspace. Please try again.')
+      setError(t('onboarding.failed'))
     } finally {
       setIsLoading(false)
     }
@@ -41,10 +43,10 @@ export function OnboardingPage() {
             VibeBoard
           </span>
           <h1 className="mt-3 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-            Welcome! Let&apos;s get started
+            {t('onboarding.title')}
           </h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Create your first workspace to organize your boards and tasks.
+            {t('onboarding.subtitle')}
           </p>
         </div>
 
@@ -56,7 +58,7 @@ export function OnboardingPage() {
                 htmlFor="workspaceName"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
-                Workspace name
+                {t('onboarding.workspaceName')}
               </label>
               <input
                 id="workspaceName"
@@ -66,28 +68,18 @@ export function OnboardingPage() {
                   setWorkspaceName(e.target.value)
                   if (error) setError(undefined)
                 }}
-                aria-describedby={error ? 'workspace-error' : 'workspace-hint'}
-                aria-invalid={!!error}
+                disabled={isLoading}
+                placeholder={t('onboarding.workspacePlaceholder')}
                 className={[
                   'w-full rounded-md border px-3 py-2 text-sm outline-none transition-colors',
                   'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100',
-                  'placeholder:text-gray-400 dark:placeholder:text-gray-500',
+                  'placeholder:text-gray-400 dark:placeholder:text-gray-500 disabled:opacity-50',
                   error
                     ? 'border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500'
                     : 'border-gray-300 dark:border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500',
                 ].join(' ')}
-                placeholder="My Team, Personal, Startup..."
-                autoFocus
               />
-              {error ? (
-                <p id="workspace-error" className="mt-1 text-xs text-red-500">
-                  {error}
-                </p>
-              ) : (
-                <p id="workspace-hint" className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                  You can rename or add more workspaces later.
-                </p>
-              )}
+              {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
             </div>
 
             <button
@@ -95,7 +87,7 @@ export function OnboardingPage() {
               disabled={isLoading}
               className="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Creating…' : 'Continue'}
+              {isLoading ? t('onboarding.creating') : t('onboarding.create')}
             </button>
           </form>
         </div>

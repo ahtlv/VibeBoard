@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AppShell } from '@/shared/ui/AppShell'
 import { PremiumGate } from '@/shared/ui/PremiumGate'
 import { analyticsApi, AnalyticsOverview } from '@/shared/api/analyticsApi'
@@ -47,6 +48,7 @@ type LoadState = 'loading' | 'error' | 'ready'
 
 export function AnalyticsPage() {
   const { user } = useAuth()
+  const { t } = useTranslation()
   const isPro = user?.plan === 'pro' || user?.plan === 'team'
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
@@ -73,7 +75,7 @@ export function AnalyticsPage() {
   if (loadState === 'error') {
     return (
       <AppShell>
-        <p className="text-sm text-red-500">Failed to load analytics.</p>
+        <p className="text-sm text-red-500">{t('analytics.error')}</p>
       </AppShell>
     )
   }
@@ -81,10 +83,7 @@ export function AnalyticsPage() {
   return (
     <AppShell>
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Analytics</h1>
-        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-          Your productivity overview
-        </p>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t('analytics.title')}</h1>
       </div>
 
       {/* Stat cards */}
@@ -100,30 +99,30 @@ export function AnalyticsPage() {
         ) : (
           <>
             <StatCard
-              label="Completed tasks"
+              label={t('analytics.tasks')}
               value={overview!.completedTasks}
-              description="Tasks marked as done"
+              description={t('analytics.tasks')}
               accent="text-indigo-600 dark:text-indigo-400"
               icon="✅"
             />
             <StatCard
-              label="Tracked time"
+              label={t('analytics.time')}
               value={formatSeconds(overview!.totalTrackedSeconds)}
-              description="Total time logged"
+              description={t('analytics.time')}
               accent="text-emerald-600 dark:text-emerald-400"
               icon="⏱"
             />
             <StatCard
-              label="Current streak"
-              value={`${overview!.currentStreakDays} days`}
-              description="Consecutive active days"
+              label={t('analytics.streak')}
+              value={`${overview!.currentStreakDays}`}
+              description={t('analytics.streak')}
               accent="text-orange-500 dark:text-orange-400"
               icon="🔥"
             />
             <StatCard
-              label="Pomodoro sessions"
+              label={t('analytics.pomodoros')}
               value={overview!.pomodoroSessionsCount}
-              description="Focus sessions completed"
+              description={t('analytics.pomodoros')}
               accent="text-red-500 dark:text-red-400"
               icon="🍅"
             />

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { AppShell } from '@/shared/ui/AppShell'
 import { BoardHeader, KanbanColumn, TaskModal } from '@/widgets'
 import type { TaskModalMode, TaskFormValues } from '@/widgets/TaskModal'
@@ -18,6 +19,7 @@ import { useAuth } from '@/features/auth/store'
 type LoadState = 'loading' | 'error' | 'empty' | 'ready'
 
 export function DashboardPage() {
+  const { t } = useTranslation()
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null)
   const [boardSummaries, setBoardSummaries] = useState<BoardSummary[]>([])
@@ -112,13 +114,15 @@ export function DashboardPage() {
     return () => { cancelled = true }
   }, [activeBoardId])
 
-  async function handleInviteMember(email: string, role: WorkspaceRole) {
-    if (!activeBoardId || role === 'owner') return
+  async function handleInviteMember(email: string, role: WorkspaceRole): Promise<string | null> {
+    if (!activeBoardId || role === 'owner') return null
     try {
       const newMember = await boardMembersApi.add(activeBoardId, email, role as 'admin' | 'member')
       setMembers((prev) => [...prev, newMember])
-    } catch {
-      // Молча — InviteMembersModal сама покажет ошибку если нужно
+      return null
+    } catch (err) {
+      if (err instanceof Error) return err.message
+      return 'Failed to invite member'
     }
   }
 
@@ -380,7 +384,7 @@ export function DashboardPage() {
       .moveTask(taskId, { columnId: toColumnId, position: targetIndex })
       .catch(() => {
         setBoard(snapshot)
-        setMoveError('Failed to move task. Changes reverted.')
+        setMoveError(t('dashboard.error'))
         setTimeout(() => setMoveError(null), 4000)
       })
   }
@@ -420,7 +424,7 @@ export function DashboardPage() {
 
           {loadState === 'error' && (
             <div className="flex flex-1 items-center justify-center">
-              <p className="text-sm text-red-500">Failed to load boards. Please refresh.</p>
+              <p className="text-sm text-red-500">{t('dashboard.error')}</p>
             </div>
           )}
 
@@ -428,13 +432,13 @@ export function DashboardPage() {
             <div className="flex flex-1 flex-col items-center justify-center gap-4">
               {!workspace ? (
                 <>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">You don't have a workspace yet.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.createWorkspaceHint')}</p>
                   <form onSubmit={handleCreateWorkspace} className="flex gap-2">
                     <input
                       type="text"
                       value={newWorkspaceName}
                       onChange={(e) => setNewWorkspaceName(e.target.value)}
-                      placeholder="Workspace name"
+                      placeholder={t('dashboard.workspaceNamePlaceholder')}
                       className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                     />
                     <button
@@ -442,12 +446,12 @@ export function DashboardPage() {
                       disabled={creatingWorkspace || !newWorkspaceName.trim()}
                       className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-60"
                     >
-                      {creatingWorkspace ? 'Creating…' : 'Create workspace'}
+                      {creatingWorkspace ? t('dashboard.creating') : t('dashboard.createWorkspace')}
                     </button>
                   </form>
                 </>
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No boards yet.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.noBoards')}</p>
               )}
             </div>
           )}

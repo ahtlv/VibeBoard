@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { ThemeToggle } from '../ThemeToggle'
+import { LanguageToggle } from '../LanguageToggle'
 
 interface LayoutProps {
   children: ReactNode
@@ -14,7 +15,10 @@ export function Layout({ children }: LayoutProps) {
             <span className="text-xl font-bold tracking-tight text-indigo-600 dark:text-indigo-400">
               VibeBoard
             </span>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <LanguageToggle />
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>

@@ -132,6 +132,24 @@ usersApi.search(q)  // → UserSearchResult[]
 
 ---
 
+## Фикс 2026-04-30 — Board members не отображались после деплоя
+
+### Причина
+
+В `board_members` два FK на таблицу `users` — `user_id` и `invited_by`. После обновления PostgREST на стороне Supabase запрос `users(name, avatar_url)` в Supabase JS SDK стал неоднозначным: PostgREST возвращал ошибку "Multiple Choices" вместо данных → бэкенд → 500 → фронт ловил silently → `members = []`. Функция работала до обновления платформы.
+
+### Что исправлено
+
+**Бэкенд** (`GET /boards/:id/members`): явный FK-хинт в запросе:
+```diff
+- .select('... users(name, avatar_url)')
++ .select('... users!board_members_user_id_fkey(name, avatar_url)')
+```
+
+**Фронт** (`InviteMembersModal` + `DashboardPage`): `onInvite` теперь возвращает `Promise<string | null>`. При ошибке API — сообщение показывается под полем вместо тихого фейла. Кнопка блокируется на время запроса.
+
+---
+
 ## Архитектурные решения
 
 - **Бэкенд использует service key** — RLS обходится, авторизация делается вручную через `isMember()`

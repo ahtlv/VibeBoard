@@ -180,7 +180,7 @@ boardsRouter.get('/:id/members', async (c) => {
 
   const { data, error } = await supabase
     .from('board_members')
-    .select('id, board_id, user_id, email, role, status, invited_by, joined_at, users(name, avatar_url)')
+    .select('id, board_id, user_id, email, role, status, invited_by, joined_at, users!board_members_user_id_fkey(name, avatar_url)')
     .eq('board_id', boardId)
     .order('joined_at')
 

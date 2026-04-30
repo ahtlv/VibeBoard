@@ -8,7 +8,7 @@ const MAX_VISIBLE = 4
 
 interface BoardMembersStackProps {
   members: BoardMember[]
-  onInvite: (email: string, role: WorkspaceRole) => void
+  onInvite: (email: string, role: WorkspaceRole) => Promise<string | null>
   onRemove: (memberId: string) => void
   onChangeRole: (memberId: string, role: WorkspaceRole) => void
 }

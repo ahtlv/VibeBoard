@@ -1,25 +1,28 @@
 import { useState, type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/features/auth/store'
 import { ThemeToggle } from './ThemeToggle'
+import { LanguageToggle } from './LanguageToggle'
 import { BoardNav } from './BoardNav'
 
 interface AppShellProps {
   children: ReactNode
 }
 
-const NAV_ITEMS = [
-  { to: '/calendar', label: 'Calendar' },
-  { to: '/analytics', label: 'Analytics' },
-  { to: '/workspace', label: 'Members' },
-  { to: '/settings', label: 'Settings' },
-  { to: '/billing', label: 'Billing' },
-] as const
-
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { t } = useTranslation()
+
+  const NAV_ITEMS = [
+    { to: '/calendar', label: t('nav.calendar') },
+    { to: '/analytics', label: t('nav.analytics') },
+    { to: '/workspace', label: t('nav.members') },
+    { to: '/settings', label: t('nav.settings') },
+    { to: '/billing', label: t('nav.billing') },
+  ] as const
 
   function handleLogout() {
     logout()
@@ -46,7 +49,10 @@ export function AppShell({ children }: AppShellProps) {
             VibeBoard
           </span>
 
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -113,7 +119,7 @@ export function AppShell({ children }: AppShellProps) {
               onClick={handleLogout}
               className="flex w-full items-center justify-between rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition-colors hover:border-red-300 hover:bg-red-100 hover:text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-400 dark:hover:border-red-800 dark:hover:bg-red-950/60 dark:hover:text-red-300"
             >
-              <span>Logout</span>
+              <span>{t('common.logout')}</span>
               <span aria-hidden="true" className="text-base leading-none">↪</span>
             </button>
           </div>

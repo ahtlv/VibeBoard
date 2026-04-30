@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { authApi } from '@/shared/api/authApi'
 import { useAuth } from '@/features/auth/store'
 import { ThemeToggle } from '@/shared/ui/ThemeToggle'
+import { LanguageToggle } from '@/shared/ui/LanguageToggle'
 
 interface FormValues {
   email: string
@@ -17,25 +19,26 @@ interface FormErrors {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function validate(values: FormValues): FormErrors {
-  const errors: FormErrors = {}
-  if (!values.email.trim()) {
-    errors.email = 'Email is required'
-  } else if (!EMAIL_REGEX.test(values.email)) {
-    errors.email = 'Enter a valid email address'
-  }
-  if (!values.password) {
-    errors.password = 'Password is required'
-  }
-  return errors
-}
-
 export function LoginPage() {
   const navigate = useNavigate()
   const { status } = useAuth()
+  const { t } = useTranslation()
   const [values, setValues] = useState<FormValues>({ email: '', password: '' })
   const [errors, setErrors] = useState<FormErrors>({})
   const [isLoading, setIsLoading] = useState(false)
+
+  function validate(vals: FormValues): FormErrors {
+    const errs: FormErrors = {}
+    if (!vals.email.trim()) {
+      errs.email = t('auth.emailRequired')
+    } else if (!EMAIL_REGEX.test(vals.email)) {
+      errs.email = t('auth.invalidEmail')
+    }
+    if (!vals.password) {
+      errs.password = t('auth.passwordRequired')
+    }
+    return errs
+  }
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -57,17 +60,16 @@ export function LoginPage() {
       const { error } = await authApi.login(values.email, values.password)
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
-          toast.error('Invalid email or password')
+          toast.error(t('auth.invalidCredentials'))
         } else if (error.message.includes('Email not confirmed')) {
-          toast.error('Please confirm your email before signing in.')
+          toast.error(t('auth.emailNotConfirmed'))
         } else {
           toast.error(error.message)
         }
         return
       }
-      // navigation happens in useEffect once status becomes 'authenticated'
     } catch {
-      toast.error('Something went wrong. Please try again.')
+      toast.error(t('auth.genericError'))
     } finally {
       setIsLoading(false)
     }
@@ -82,7 +84,8 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
-      <div className="fixed right-4 top-2.5 z-10">
+      <div className="fixed right-4 top-2.5 z-10 flex items-center gap-2">
+        <LanguageToggle />
         <ThemeToggle />
       </div>
 
@@ -92,7 +95,7 @@ export function LoginPage() {
             VibeBoard
           </span>
           <h1 className="mt-2 text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Welcome back
+            {t('auth.welcomeBack')}
           </h1>
         </div>
 
@@ -100,7 +103,7 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email
+                {t('auth.email')}
               </label>
               <input
                 id="email"
@@ -119,14 +122,14 @@ export function LoginPage() {
                     ? 'border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500'
                     : 'border-gray-300 dark:border-gray-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500',
                 ].join(' ')}
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
               />
               {errors.email && <p id="email-error" className="mt-1 text-xs text-red-500">{errors.email}</p>}
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password
+                {t('auth.password')}
               </label>
               <input
                 id="password"
@@ -155,13 +158,13 @@ export function LoginPage() {
               disabled={isLoading}
               className="w-full rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Signing in…' : 'Sign in'}
+              {isLoading ? t('auth.signingIn') : t('auth.signIn')}
             </button>
           </form>
 
           <div className="mt-5 flex items-center gap-3">
             <div className="flex-1 border-t border-gray-200 dark:border-gray-700" />
-            <span className="text-xs text-gray-400 dark:text-gray-500">or</span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{t('common.or')}</span>
             <div className="flex-1 border-t border-gray-200 dark:border-gray-700" />
           </div>
 
@@ -176,14 +179,14 @@ export function LoginPage() {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            Continue with Google
+            {t('auth.continueWithGoogle')}
           </button>
         </div>
 
         <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-          Don&apos;t have an account?{' '}
+          {t('auth.noAccount')}{' '}
           <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
-            Sign up
+            {t('auth.signUp')}
           </Link>
         </p>
       </div>

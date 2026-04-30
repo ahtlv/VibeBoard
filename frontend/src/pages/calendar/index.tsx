@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AppShell } from '@/shared/ui/AppShell'
 import { TaskCard, TaskModal } from '@/widgets'
 import { MOCK_BOARD } from '@/shared/lib/mock/board'
@@ -7,7 +8,7 @@ import type { Task } from '@/entities/task/types'
 // ── date helpers ──────────────────────────────────────────────────────────────
 
 function toDateKey(iso: string): string {
-  return iso.slice(0, 10) // "YYYY-MM-DD"
+  return iso.slice(0, 10)
 }
 
 function todayKey(): string {
@@ -20,19 +21,6 @@ function tomorrowKey(): string {
   return toDateKey(d.toISOString())
 }
 
-function groupLabel(dateKey: string): { label: string; overdue: boolean } {
-  const today = todayKey()
-  const tomorrow = tomorrowKey()
-  if (dateKey < today) return { label: 'Overdue', overdue: true }
-  if (dateKey === today) return { label: 'Today', overdue: false }
-  if (dateKey === tomorrow) return { label: 'Tomorrow', overdue: false }
-  const date = new Date(dateKey + 'T00:00:00')
-  return {
-    label: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-    overdue: false,
-  }
-}
-
 // ── grouping ──────────────────────────────────────────────────────────────────
 
 interface TaskGroup {
@@ -42,9 +30,17 @@ interface TaskGroup {
   tasks: Task[]
 }
 
-function groupTasksByDate(tasks: Task[]): { groups: TaskGroup[]; noDate: Task[] } {
+function groupTasksByDate(
+  tasks: Task[],
+  todayLabel: string,
+  tomorrowLabel: string,
+  overdueLabel: string,
+  lng: string,
+): { groups: TaskGroup[]; noDate: Task[] } {
   const map = new Map<string, Task[]>()
   const noDate: Task[] = []
+  const today = todayKey()
+  const tomorrow = tomorrowKey()
 
   for (const task of tasks) {
     if (!task.dueDate) {
@@ -58,7 +54,22 @@ function groupTasksByDate(tasks: Task[]): { groups: TaskGroup[]; noDate: Task[] 
 
   const groups: TaskGroup[] = Array.from(map.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([dateKey, tasks]) => ({ dateKey, tasks, ...groupLabel(dateKey) }))
+    .map(([dateKey, groupTasks]) => {
+      let label: string
+      let overdue = false
+      if (dateKey < today) {
+        label = overdueLabel
+        overdue = true
+      } else if (dateKey === today) {
+        label = todayLabel
+      } else if (dateKey === tomorrow) {
+        label = tomorrowLabel
+      } else {
+        const date = new Date(dateKey + 'T00:00:00')
+        label = date.toLocaleDateString(lng, { weekday: 'short', month: 'short', day: 'numeric' })
+      }
+      return { dateKey, tasks: groupTasks, label, overdue }
+    })
 
   return { groups, noDate }
 }
@@ -66,19 +77,26 @@ function groupTasksByDate(tasks: Task[]): { groups: TaskGroup[]; noDate: Task[] 
 // ── component ─────────────────────────────────────────────────────────────────
 
 export function CalendarPage() {
+  const { t, i18n } = useTranslation()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
 
   const allTasks = MOCK_BOARD.columns.flatMap((col) => col.tasks)
-  const { groups, noDate } = groupTasksByDate(allTasks)
+  const { groups, noDate } = groupTasksByDate(
+    allTasks,
+    t('calendar.today'),
+    t('calendar.tomorrow'),
+    t('calendar.overdue'),
+    i18n.language,
+  )
   const tasksWithDate = allTasks.filter((t) => t.dueDate !== null).length
 
   return (
     <AppShell>
       {/* Page header */}
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Calendar</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t('calendar.title')}</h1>
         <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-          {tasksWithDate} task{tasksWithDate !== 1 ? 's' : ''} with deadlines
+          {tasksWithDate}
         </p>
       </div>
 
@@ -118,7 +136,7 @@ export function CalendarPage() {
           <section>
             <div className="mb-3 flex items-center gap-2">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                No due date
+                {t('calendar.noDateTasks')}
               </h2>
               <span className="rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
                 {noDate.length}
@@ -138,10 +156,7 @@ export function CalendarPage() {
               📅
             </div>
             <p className="mt-4 text-sm font-medium text-gray-700 dark:text-gray-300">
-              No tasks with deadlines
-            </p>
-            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-              Set a due date on a task in the board to see it here
+              {t('calendar.noTasks')}
             </p>
           </div>
         )}
