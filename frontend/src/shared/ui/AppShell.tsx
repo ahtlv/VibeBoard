@@ -6,6 +6,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { LanguageToggle } from './LanguageToggle'
 import { BoardNav } from './BoardNav'
 import { PomodoroProvider, PomodoroFab } from '@/features/pomodoro-fab'
+import { SoundMixer } from '@/features/pomodoro-fab/ui/SoundMixer'
 
 interface AppShellProps {
   children: ReactNode
@@ -102,6 +103,12 @@ export function AppShell({ children }: AppShellProps) {
           </nav>
 
           <div className="border-t border-gray-200 dark:border-gray-800 px-3 py-3 space-y-2">
+            <div>
+              <SoundMixer />
+            </div>
+
+            <div className="h-px bg-gray-200 dark:bg-gray-800" />
+
             {user && (
               <div className="flex items-center gap-3 py-1">
                 <div

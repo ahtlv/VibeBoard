@@ -278,5 +278,10 @@
     "creating": "Создаём...",
     "noWorkspace": "Нет пространства",
     "createWorkspaceHint": "Создайте пространство для начала работы"
+  },
+  "sounds": {
+    "play": "Звук",
+    "pause": "Пауза",
+    "volumeOf": "Громкость {{name}}"
   }
 }

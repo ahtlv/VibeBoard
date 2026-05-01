@@ -48,7 +48,7 @@ export function DailyGoalRing({ current, goal, size = 56 }: DailyGoalRingProps) 
           {current}/{goal}
         </text>
       </svg>
-      <span className="text-[10px] text-gray-400 dark:text-gray-500">daily goal</span>
+      <span className="text-[10px] text-gray-400 dark:text-gray-500">цель дня</span>
     </div>
   )
 }

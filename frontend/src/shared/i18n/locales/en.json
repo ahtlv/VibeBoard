@@ -276,5 +276,10 @@
     "creating": "Creating...",
     "noWorkspace": "No workspace",
     "createWorkspaceHint": "Create a workspace to get started"
+  },
+  "sounds": {
+    "play": "Play",
+    "pause": "Pause",
+    "volumeOf": "{{name}} volume"
   }
 }

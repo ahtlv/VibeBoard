@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 interface PopoverProps {
   open: boolean
@@ -9,8 +9,27 @@ interface PopoverProps {
   className?: string
 }
 
+const originByAlign = {
+  'bottom-right': 'top right',
+  'bottom-left': 'top left',
+  'top-right': 'bottom right',
+} as const
+
 export function Popover({ open, onClose, anchor, children, align = 'bottom-right', className }: PopoverProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setVisible(false)
+      return
+    }
+    // Two-frame trick: mount first, then flip to visible so transition fires
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setVisible(true))
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -45,6 +64,12 @@ export function Popover({ open, onClose, anchor, children, align = 'bottom-right
           role="dialog"
           aria-modal="true"
           className={['absolute z-50', alignClass, className].filter(Boolean).join(' ')}
+          style={{
+            transformOrigin: originByAlign[align],
+            transform: visible ? 'scale(1)' : 'scale(0.95)',
+            opacity: visible ? 1 : 0,
+            transition: 'transform 200ms ease-out, opacity 200ms ease-out',
+          }}
         >
           {children}
         </div>

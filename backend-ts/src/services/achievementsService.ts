@@ -23,7 +23,7 @@ async function computeMetrics(supabase: SupabaseClient, userId: string): Promise
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  const [{ count: pomodoroTotal }, { count: tasksTotal }, { data: todayEntries }, { data: userRow }] =
+  const [{ count: pomodoroTotal }, { count: tasksTotal }, { data: todayEntries }, { data: userRow }, streakDays] =
     await Promise.all([
       supabase.from('time_entries')
         .select('id', { count: 'exact', head: true })
@@ -47,13 +47,12 @@ async function computeMetrics(supabase: SupabaseClient, userId: string): Promise
         .select('daily_pomodoro_goal')
         .eq('id', userId)
         .single(),
+
+      computeStreak(supabase, userId),
     ])
 
   const dailyGoal = userRow?.daily_pomodoro_goal ?? 8
   const todayPomodoros = todayEntries?.length ?? 0
-
-  // Compute streak: check last 60 days for activity (pomodoro or done-task)
-  const streakDays = await computeStreak(supabase, userId)
 
   return {
     pomodoro_total: pomodoroTotal ?? 0,

@@ -1,20 +1,24 @@
-import { useState, useEffect } from 'react'
-import { achievementsApi, type Achievement } from '@/shared/api/achievementsApi'
-import { pomodoroEvents } from '@/shared/lib/pomodoroEvents'
+import type { Achievement } from '@/shared/api/achievementsApi'
 
 const LEGENDARY_ID = 'pomodoro_500'
 
-export function AchievementsGrid() {
-  const [items, setItems] = useState<Achievement[]>([])
+const skeletonTile = 'rounded-xl aspect-square bg-white/10 dark:bg-white/5 animate-pulse'
 
-  useEffect(() => {
-    function load() {
-      achievementsApi.list().then(setItems).catch(() => {})
-    }
-    load()
-    const off = pomodoroEvents.on('pomodoroStop', load)
-    return () => { off() }
-  }, [])
+interface AchievementsGridProps {
+  items: Achievement[] | null
+}
+
+export function AchievementsGrid({ items }: AchievementsGridProps) {
+  if (items === null) {
+    return (
+      <div className="grid grid-cols-4 gap-1.5">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className={skeletonTile} />
+        ))}
+        <div className={skeletonTile} />
+      </div>
+    )
+  }
 
   if (items.length === 0) return null
 
