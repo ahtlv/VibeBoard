@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ModalOverlay } from '@/shared/ui/Modal'
 import { Avatar } from '@/shared/ui/Avatar'
 import { boardsApi } from '@/shared/api/boardsApi'
@@ -18,6 +19,7 @@ export function BoardNav({ onClose }: { onClose?: () => void }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingBoard, setEditingBoard] = useState<BoardSummary | null>(null)
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const activeBoardId = searchParams.get('board')
 
@@ -43,10 +45,10 @@ export function BoardNav({ onClose }: { onClose?: () => void }) {
     <li>
       {/* Заголовок секции */}
       <div className="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-        <span>Boards</span>
+        <span>{t('board.boards')}</span>
         <button
           type="button"
-          title="New board"
+          title={t('board.newBoard')}
           onClick={() => setShowCreateModal(true)}
           className="rounded p-0.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
         >
@@ -81,7 +83,7 @@ export function BoardNav({ onClose }: { onClose?: () => void }) {
 
               <button
                 type="button"
-                title="Edit board"
+                title={t('board.editBoard')}
                 onClick={(e) => { e.stopPropagation(); setEditingBoard(board) }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
               >
@@ -101,6 +103,7 @@ export function BoardNav({ onClose }: { onClose?: () => void }) {
           onCreated={(summary) => {
             setBoards((prev) => [...prev, summary])
             setShowCreateModal(false)
+            window.dispatchEvent(new CustomEvent('board:created', { detail: summary }))
             navigate(`/dashboard?board=${summary.id}`)
             onClose?.()
           }}
@@ -116,6 +119,7 @@ export function BoardNav({ onClose }: { onClose?: () => void }) {
           onSave={(updated) => {
             setBoards((prev) => prev.map((b) => b.id === updated.id ? { ...b, ...updated } : b))
             setEditingBoard(null)
+            window.dispatchEvent(new CustomEvent('board:updated', { detail: updated }))
           }}
           onDelete={(boardId) => {
             const remaining = boards.filter((b) => b.id !== boardId)
@@ -146,6 +150,7 @@ interface CreateBoardModalProps {
 }
 
 function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalProps) {
+  const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [desc, setDesc] = useState('')
   const [creating, setCreating] = useState(false)
@@ -284,7 +289,7 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
       if (members.length > 0) boardMembersStore.set(created.id, members)
       onCreated(created)
     } catch {
-      setError('Failed to create board. Please try again.')
+      setError(t('board.createError'))
       setCreating(false)
     }
   }
@@ -293,16 +298,16 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
 
   return (
     <ModalOverlay onClose={onClose} wide>
-      <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">New board</h3>
+      <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">{t('board.newBoard')}</h3>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className={labelClass}>Name</label>
+          <label className={labelClass}>{t('board.name')}</label>
           <input
             ref={inputRef}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="My board"
+            placeholder={t('board.placeholder')}
             disabled={creating}
             className={fieldClass}
           />
@@ -310,12 +315,12 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
 
         <div>
           <label className={labelClass}>
-            Description <span className="text-gray-400 font-normal">(optional)</span>
+            {t('board.description')} <span className="text-gray-400 font-normal">({t('board.optional')})</span>
           </label>
           <textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            placeholder="What is this board for?"
+            placeholder={t('board.descriptionPlaceholder')}
             disabled={creating}
             rows={2}
             className={`${fieldClass} resize-none`}
@@ -326,12 +331,12 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className={labelClass + ' mb-0'}>
-              Members{' '}
-              <span className="text-gray-400 font-normal">(optional)</span>
+              {t('board.members')}{' '}
+              <span className="text-gray-400 font-normal">({t('board.optional')})</span>
             </label>
             {totalSelected > 0 && (
               <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-                {totalSelected} selected
+                {t('board.selected', { count: totalSelected })}
               </span>
             )}
           </div>
@@ -402,7 +407,7 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
               onClick={() => setShowInviteRow(true)}
               className="text-xs text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
-              + Invite someone new
+              {t('board.inviteSomeone')}
             </button>
           )}
 
@@ -456,7 +461,7 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
                   disabled={!inviteEmail.trim()}
                   className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
                 >
-                  Add
+                  {t('board.add')}
                 </button>
               </div>
               {inviteError && <p className="text-xs text-red-500">{inviteError}</p>}
@@ -466,7 +471,7 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
                   onClick={() => { setShowInviteRow(false); setInviteEmail(''); setInviteError(null) }}
                   className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 >
-                  Cancel invite
+                  {t('board.cancelInvite')}
                 </button>
               )}
             </div>
@@ -481,7 +486,7 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
             disabled={creating || !title.trim()}
             className="flex-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
           >
-            {creating ? 'Creating…' : 'Create board'}
+            {creating ? t('board.creating') : t('board.createBoard')}
           </button>
           <button
             type="button"
@@ -489,7 +494,7 @@ function CreateBoardModal({ workspaceId, onCreated, onClose }: CreateBoardModalP
             disabled={creating}
             className="rounded-md border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('board.cancel')}
           </button>
         </div>
       </form>
@@ -508,6 +513,7 @@ interface EditBoardModalProps {
 }
 
 function EditBoardModal({ board, onSave, onDelete, onClose }: EditBoardModalProps) {
+  const { t } = useTranslation()
   const [title, setTitle] = useState(board.title)
   const [desc, setDesc] = useState(board.description ?? '')
   const [saving, setSaving] = useState(false)
@@ -525,7 +531,7 @@ function EditBoardModal({ board, onSave, onDelete, onClose }: EditBoardModalProp
       await boardsApi.updateBoard(board.id, { title: trimmedTitle, description: desc.trim() || null })
       onSave({ id: board.id, title: trimmedTitle, description: desc.trim() || null })
     } catch {
-      setError('Failed to save. Please try again.')
+      setError(t('board.saveError'))
     } finally {
       setSaving(false)
     }
@@ -537,7 +543,7 @@ function EditBoardModal({ board, onSave, onDelete, onClose }: EditBoardModalProp
       await boardsApi.deleteBoard(board.id)
       onDelete(board.id)
     } catch {
-      setError('Failed to delete. Please try again.')
+      setError(t('board.deleteError'))
       setDeleting(false)
     }
   }
@@ -555,11 +561,11 @@ function EditBoardModal({ board, onSave, onDelete, onClose }: EditBoardModalProp
 
   return (
     <ModalOverlay onClose={onClose}>
-      <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">Edit board</h3>
+      <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-gray-100">{t('board.editBoard')}</h3>
 
       <form onSubmit={handleSave} className="space-y-3">
         <div>
-          <label className={labelClass}>Name</label>
+          <label className={labelClass}>{t('board.name')}</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -569,7 +575,7 @@ function EditBoardModal({ board, onSave, onDelete, onClose }: EditBoardModalProp
         </div>
 
         <div>
-          <label className={labelClass}>Description <span className="text-gray-400 font-normal">(optional)</span></label>
+          <label className={labelClass}>{t('board.description')} <span className="text-gray-400 font-normal">({t('board.optional')})</span></label>
           <textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
@@ -587,7 +593,7 @@ function EditBoardModal({ board, onSave, onDelete, onClose }: EditBoardModalProp
             disabled={saving || deleting || !title.trim()}
             className="flex-1 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('board.saving') : t('board.save')}
           </button>
           <button
             type="button"
@@ -595,7 +601,7 @@ function EditBoardModal({ board, onSave, onDelete, onClose }: EditBoardModalProp
             disabled={saving || deleting}
             className="rounded-md border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('board.cancel')}
           </button>
         </div>
       </form>
@@ -607,7 +613,7 @@ function EditBoardModal({ board, onSave, onDelete, onClose }: EditBoardModalProp
           disabled={saving || deleting}
           className="w-full rounded-md border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/60 transition-colors disabled:opacity-50"
         >
-          Delete board…
+          {t('board.deleteBoard')}
         </button>
       </div>
     </ModalOverlay>
@@ -624,10 +630,10 @@ interface DeleteConfirmModalProps {
 }
 
 function DeleteConfirmModal({ boardTitle, deleting, onConfirm, onCancel }: DeleteConfirmModalProps) {
+  const { t } = useTranslation()
   return (
     <ModalOverlay onClose={onCancel}>
       <div className="flex flex-col items-center text-center">
-        {/* Иконка предупреждения */}
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/60 mb-4">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-red-600 dark:text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -636,11 +642,9 @@ function DeleteConfirmModal({ boardTitle, deleting, onConfirm, onCancel }: Delet
           </svg>
         </div>
 
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Delete board?</h3>
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('board.deleteBoardConfirm')}</h3>
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          You are about to delete{' '}
-          <span className="font-medium text-gray-700 dark:text-gray-300">"{boardTitle}"</span>.
-          All columns and tasks will be lost. This action cannot be undone.
+          {t('board.deleteBoardWarning', { title: boardTitle })}
         </p>
 
         <div className="mt-6 flex w-full gap-3">
@@ -650,7 +654,7 @@ function DeleteConfirmModal({ boardTitle, deleting, onConfirm, onCancel }: Delet
             disabled={deleting}
             className="flex-1 rounded-md border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('board.cancel')}
           </button>
           <button
             type="button"
@@ -658,7 +662,7 @@ function DeleteConfirmModal({ boardTitle, deleting, onConfirm, onCancel }: Delet
             disabled={deleting}
             className="flex-1 rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50 shadow-sm"
           >
-            {deleting ? 'Deleting…' : 'Delete board'}
+            {deleting ? t('board.deleting') : t('board.delete')}
           </button>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { useAuth } from '@/features/auth/store'
 import { ThemeToggle } from './ThemeToggle'
 import { LanguageToggle } from './LanguageToggle'
 import { BoardNav } from './BoardNav'
+import { PomodoroProvider, PomodoroFab } from '@/features/pomodoro-fab'
 
 interface AppShellProps {
   children: ReactNode
@@ -31,6 +32,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
+    <PomodoroProvider>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       {/* Header */}
       <header className="fixed inset-x-0 top-0 z-30 h-14 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
@@ -128,6 +130,9 @@ export function AppShell({ children }: AppShellProps) {
         {/* Main content */}
         <main className="min-w-0 flex-1 px-4 py-4 h-full overflow-y-auto">{children}</main>
       </div>
+
+      <PomodoroFab />
     </div>
+    </PomodoroProvider>
   )
 }

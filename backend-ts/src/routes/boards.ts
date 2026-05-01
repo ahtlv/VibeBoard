@@ -95,7 +95,7 @@ boardsRouter.get('/:id', async (c) => {
 
   const [{ data: columns }, { data: tasks }, { data: assignees }] = await Promise.all([
     supabase.from('columns').select('*').eq('board_id', boardId).order('position'),
-    supabase.from('tasks').select('*').eq('board_id', boardId).eq('is_archived', false).order('position'),
+    supabase.from('tasks').select('*').eq('board_id', boardId).eq('is_archived', false).neq('status', 'done').order('position'),
     supabase.from('task_assignees').select('task_id, user_id').eq('board_id', boardId),
   ])
 

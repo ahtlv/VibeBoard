@@ -2,17 +2,16 @@ import { apiClient } from './client'
 
 // ── response DTOs ─────────────────────────────────────────────────────────────
 
-/** Бесплатная сводка — доступна всем тарифам */
 export interface AnalyticsOverview {
   completedTasks: number
   totalTrackedSeconds: number
   currentStreakDays: number
   pomodoroSessionsCount: number
+  dailyPomodoroGoal: number
 }
 
-/** Детальная продуктивность — Pro / Team */
 export interface DailyProductivity {
-  date: string           // ISO date, e.g. "2026-04-08"
+  date: string
   completedTasks: number
   trackedSeconds: number
   pomodoroSessions: number
@@ -22,28 +21,38 @@ export interface ProductivityStats {
   periodDays: number
   daily: DailyProductivity[]
   topLabels: Array<{ labelId: string; title: string; color: string; taskCount: number }>
-  completionRate: number  // 0–1
+  completionRate: number
 }
-
-// ── query params ──────────────────────────────────────────────────────────────
 
 export interface ProductivityStatsParams {
   workspaceId?: string
   boardId?: string
-  /** ISO date string, e.g. "2026-03-01" */
   from?: string
-  /** ISO date string */
   to?: string
 }
 
 // ── api ───────────────────────────────────────────────────────────────────────
 
-export const analyticsApi = {
-  /** GET /analytics/overview — общая сводка для текущего пользователя */
-  getOverview: (): Promise<AnalyticsOverview> =>
-    apiClient.get<AnalyticsOverview>('/analytics/overview'),
+interface OverviewRaw {
+  tasks_done: number
+  total_tracked_time: number
+  pomodoro_sessions: number
+  current_streak_days: number
+  daily_pomodoro_goal: number
+}
 
-  /** GET /analytics/productivity — детальная аналитика (Pro/Team) */
+export const analyticsApi = {
+  getOverview: async (): Promise<AnalyticsOverview> => {
+    const raw = await apiClient.get<OverviewRaw>('/analytics/overview')
+    return {
+      completedTasks: raw.tasks_done,
+      totalTrackedSeconds: raw.total_tracked_time,
+      pomodoroSessionsCount: raw.pomodoro_sessions,
+      currentStreakDays: raw.current_streak_days,
+      dailyPomodoroGoal: raw.daily_pomodoro_goal,
+    }
+  },
+
   getProductivityStats: (params?: ProductivityStatsParams): Promise<ProductivityStats> => {
     const query = new URLSearchParams()
     if (params?.workspaceId) query.set('workspace_id', params.workspaceId)

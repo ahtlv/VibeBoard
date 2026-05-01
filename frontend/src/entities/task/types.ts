@@ -40,6 +40,8 @@ export interface Task {
   pomodoroSessionsCount: number
   recurring: RecurringSettings | null
   bgColor?: string | null
+  completedAt: string | null
+  submittedAt: string | null
   createdAt: string
   updatedAt: string
 }

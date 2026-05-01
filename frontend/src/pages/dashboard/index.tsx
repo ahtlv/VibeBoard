@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type For
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AppShell } from '@/shared/ui/AppShell'
-import { BoardHeader, KanbanColumn, TaskModal } from '@/widgets'
+import { BoardHeader, KanbanColumn, PendingReviewPanel, TaskModal } from '@/widgets'
 import type { TaskModalMode, TaskFormValues } from '@/widgets/TaskModal'
 import { boardsApi, workspacesApi } from '@/shared/api'
 import { tasksApi, mapTask } from '@/shared/api/tasksApi'
@@ -12,6 +12,8 @@ import type { Board, BoardMember, Column } from '@/entities/board/types'
 import type { Task } from '@/entities/task/types'
 import type { WorkspaceRole } from '@/shared/types/workspace'
 import { boardMembersStore } from '@/shared/lib/boardMembersStore'
+import { pomodoroEvents } from '@/shared/lib/pomodoroEvents'
+import { toast } from 'sonner'
 import { boardMembersApi } from '@/shared/api/boardMembersApi'
 import { DEFAULT_COLUMN_COLORS } from '@/entities/board/columnColors'
 import { useAuth } from '@/features/auth/store'
@@ -32,10 +34,12 @@ export function DashboardPage() {
   const [newWorkspaceName, setNewWorkspaceName] = useState('')
   const [creatingWorkspace, setCreatingWorkspace] = useState(false)
   const [draggingColId, setDraggingColId] = useState<string | null>(null)
+  const [pendingReviewTasks, setPendingReviewTasks] = useState<Task[]>([])
+  const [reviewPanelOpen, setReviewPanelOpen] = useState(false)
   const dragSnapshotRef = useRef<Board | null>(null)
   const dropSucceededRef = useRef(false)
   const lastDragOverRef = useRef<string | null>(null)
-  useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const boardIdFromUrl = searchParams.get('board')
@@ -179,6 +183,33 @@ export function DashboardPage() {
     }
   }, [boardIdFromUrl, boardSummaries])
 
+  // Синкаем заголовок/описание борда после переименования из BoardNav
+  useEffect(() => {
+    function handleBoardUpdated(e: Event) {
+      const { id, title, description } = (e as CustomEvent).detail as { id: string; title: string; description: string | null }
+      if (id === activeBoardId) {
+        setBoard((prev) => prev ? { ...prev, title, description } : prev)
+      }
+      setBoardSummaries((prev) => prev.map((b) => b.id === id ? { ...b, title, description } : b))
+    }
+    window.addEventListener('board:updated', handleBoardUpdated)
+    return () => window.removeEventListener('board:updated', handleBoardUpdated)
+  }, [activeBoardId])
+
+  // Добавляем новую доску в список и переключаемся на неё после создания из BoardNav
+  useEffect(() => {
+    function handleBoardCreated(e: Event) {
+      const summary = (e as CustomEvent).detail as BoardSummary
+      setBoardSummaries((prev) => [...prev, summary])
+      setActiveBoardId(summary.id)
+      setBoard(null)
+      setMembers([])
+      setLoadState('ready')
+    }
+    window.addEventListener('board:created', handleBoardCreated)
+    return () => window.removeEventListener('board:created', handleBoardCreated)
+  }, [])
+
   async function handleSubmitTask(values: TaskFormValues) {
     if (!taskModal) return
     const { title, description, priority, dueDate, bgColor, assigneeIds } = values
@@ -205,6 +236,8 @@ export function DashboardPage() {
         pomodoroSessionsCount: 0,
         recurring: null,
         bgColor,
+        completedAt: null,
+        submittedAt: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
@@ -251,11 +284,30 @@ export function DashboardPage() {
       }).then((raw) => {
         const real = mapTask(raw)
         setBoard((prev) => prev ? replaceTaskInColumn(prev, task.columnId, task.id, real) : prev)
+        for (const a of (raw as { unlocked_achievements?: Array<{ icon: string; title: string; description: string }> }).unlocked_achievements ?? []) {
+          toast.success(`${a.icon} ${a.title}`, { description: a.description })
+          pomodoroEvents.emit('taskDone')
+        }
       }).catch(() => {
         // откат при ошибке
         setBoard((prev) => prev ? replaceTaskInColumn(prev, task.columnId, task.id, task) : prev)
       })
     }
+  }
+
+  function handleDeleteTask(taskId: string) {
+    setBoard((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        columns: prev.columns.map((col) => ({
+          ...col,
+          tasks: col.tasks.filter((t) => t.id !== taskId),
+        })),
+      }
+    })
+    setTaskModal(null)
+    tasksApi.deleteTask(taskId).catch(() => {})
   }
 
   async function handleAddColumn(title: string, color: string | null) {
@@ -389,6 +441,92 @@ export function DashboardPage() {
       })
   }
 
+  // Роль текущего юзера в workspace
+  const isAdmin = ['owner', 'admin'].includes(workspace?.role ?? '')
+
+  // Считаем in_review задачи прямо из данных борда — надёжнее отдельного API-вызова
+  const pendingReviewCount = isAdmin
+    ? (board?.columns.flatMap((col) => col.tasks).filter((t) => t.status === 'in_review').length ?? 0)
+    : 0
+
+  function handleSubmitReview(taskId: string) {
+    setBoard((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        columns: prev.columns.map((col) => ({
+          ...col,
+          tasks: col.tasks.map((t) =>
+            t.id === taskId ? { ...t, status: 'in_review' as const, submittedAt: new Date().toISOString() } : t
+          ),
+        })),
+      }
+    })
+    tasksApi.submitForReview(taskId).catch(() => {
+      setBoard((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          columns: prev.columns.map((col) => ({
+            ...col,
+            tasks: col.tasks.map((t) =>
+              t.id === taskId ? { ...t, status: 'in_progress' as const, submittedAt: null } : t
+            ),
+          })),
+        }
+      })
+    })
+  }
+
+  function handleApprove(taskId: string) {
+    // Оптимистично убираем задачу с доски (она уходит в Calendar)
+    setBoard((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        columns: prev.columns.map((col) => ({
+          ...col,
+          tasks: col.tasks.filter((t) => t.id !== taskId),
+        })),
+      }
+    })
+    setPendingReviewTasks((prev) => prev.filter((t) => t.id !== taskId))
+    pomodoroEvents.emit('taskDone')
+
+    tasksApi.approveTask(taskId).then((raw) => {
+      for (const a of raw.unlocked_achievements ?? []) {
+        toast.success(`${a.icon} ${a.title}`, { description: a.description })
+        pomodoroEvents.emit('taskDone')
+      }
+    }).catch(() => {
+      // Откат: перезагружаем борд
+      if (activeBoardId) {
+        boardsApi.getBoard(activeBoardId).then(setBoard).catch(() => {})
+      }
+    })
+  }
+
+  function handleReject(taskId: string) {
+    setBoard((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        columns: prev.columns.map((col) => ({
+          ...col,
+          tasks: col.tasks.map((t) =>
+            t.id === taskId ? { ...t, status: 'in_progress' as const, submittedAt: null } : t
+          ),
+        })),
+      }
+    })
+    setPendingReviewTasks((prev) => prev.filter((t) => t.id !== taskId))
+    tasksApi.rejectTask(taskId).catch(() => {
+      if (activeBoardId) {
+        boardsApi.getBoard(activeBoardId).then(setBoard).catch(() => {})
+      }
+    })
+  }
+
   const showBoardSkeleton = boardLoading || (loadState === 'ready' && !board)
 
   return (
@@ -465,6 +603,15 @@ export function DashboardPage() {
                 onInvite={handleInviteMember}
                 onRemove={handleRemoveMember}
                 onChangeRole={handleChangeMemberRole}
+                pendingReviewCount={isAdmin ? pendingReviewCount : 0}
+                onOpenReview={() => {
+                  setReviewPanelOpen(true)
+                  if (workspace) {
+                    tasksApi.getPendingReview(workspace.id)
+                      .then((raw) => setPendingReviewTasks(raw.map(mapTask)))
+                      .catch(() => {})
+                  }
+                }}
               />
 
               {showBoardSkeleton ? (
@@ -488,7 +635,7 @@ export function DashboardPage() {
                 </div>
               ) : board && board.columns.length === 0 ? (
                 <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto">
-                  <AddColumnButton onAdd={handleAddColumn} />
+                  <AddColumnButton onAdd={handleAddColumn} canAdd={['owner', 'admin'].includes(workspace?.role ?? '')} />
                 </div>
               ) : (
                 <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto">
@@ -518,6 +665,11 @@ export function DashboardPage() {
                           onUpdateColumn={handleUpdateColumn}
                           onDeleteColumn={handleDeleteColumn}
                           canEdit={canEdit}
+                          currentUserId={user?.id}
+                          isAdmin={isAdmin}
+                          onSubmitReview={handleSubmitReview}
+                          onApprove={handleApprove}
+                          onReject={handleReject}
                         />
                       </div>
                     )
@@ -532,41 +684,7 @@ export function DashboardPage() {
           )}
         </div>
 
-        {/* Sidebar tools */}
-        <aside className="hidden w-56 shrink-0 xl:flex flex-col gap-3">
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-              Pomodoro
-            </h2>
-            <div className="text-center">
-              <p className="text-3xl font-mono font-semibold text-gray-900 dark:text-gray-100">25:00</p>
-              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Focus session</p>
-              <button className="mt-3 w-full rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
-                Start
-              </button>
-            </div>
-          </div>
 
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-              Today
-            </h2>
-            <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-              <li className="flex justify-between">
-                <span>Tasks done</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">0</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Time tracked</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">0h 0m</span>
-              </li>
-              <li className="flex justify-between">
-                <span>Pomodoros</span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">0</span>
-              </li>
-            </ul>
-          </div>
-        </aside>
       </div>
 
       {taskModal && (
@@ -575,6 +693,16 @@ export function DashboardPage() {
           members={members}
           onClose={() => setTaskModal(null)}
           onSubmit={handleSubmitTask}
+          onDelete={handleDeleteTask}
+        />
+      )}
+      {reviewPanelOpen && (
+        <PendingReviewPanel
+          tasks={pendingReviewTasks}
+          members={members}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onClose={() => setReviewPanelOpen(false)}
         />
       )}
     </AppShell>
@@ -617,6 +745,7 @@ function removeTaskFromColumn(board: Board, columnId: string, taskId: string): B
 // ── AddColumnButton ───────────────────────────────────────────────────────────
 
 function AddColumnButton({ onAdd, canAdd = false }: { onAdd: (title: string, color: string | null) => void; canAdd?: boolean }) {
+  const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
@@ -665,7 +794,7 @@ function AddColumnButton({ onAdd, canAdd = false }: { onAdd: (title: string, col
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Column name…"
+            placeholder={t('column.namePlaceholder')}
             className="w-full rounded-md border border-indigo-500 dark:border-indigo-400 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none ring-1 ring-indigo-500 dark:ring-indigo-400"
           />
 
@@ -744,13 +873,13 @@ function AddColumnButton({ onAdd, canAdd = false }: { onAdd: (title: string, col
               disabled={!draft.trim()}
               className={`${btnBase} bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50`}
             >
-              Add
+              {t('column.add')}
             </button>
             <button
               onClick={cancel}
               className={`${btnBase} border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700`}
             >
-              Cancel
+              {t('column.cancel')}
             </button>
           </div>
         </div>
@@ -768,7 +897,7 @@ function AddColumnButton({ onAdd, canAdd = false }: { onAdd: (title: string, col
       <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
       </svg>
-      Add column
+      {t('column.addColumn')}
     </button>
   )
 }

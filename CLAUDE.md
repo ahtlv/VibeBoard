@@ -50,7 +50,7 @@ VibeBoard/
 
 `User` → `Workspace` → `Board` → `Column` → `Task`
 
-Дополнительно: `TimeEntry / PomodoroSession`, `Subscription`, `WorkspaceMember` (roles: owner / admin / member), `Label`, `Checklist / ChecklistItem`, `Invitation`.
+Дополнительно: `TimeEntry / PomodoroSession`, `Subscription`, `WorkspaceMember` (roles: owner / admin / member), `Label`, `Checklist / ChecklistItem`, `Invitation`, `Achievement / UserAchievement`.
 
 ## Subscription Plans & Feature Gates
 

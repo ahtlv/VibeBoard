@@ -12,6 +12,7 @@ import { timeEntriesRouter } from './routes/timeEntries'
 import { analyticsRouter } from './routes/analytics'
 import { billingRouter } from './routes/billing'
 import { usersRouter } from './routes/users'
+import { achievementsRouter } from './routes/achievements'
 
 const app = new Hono<AppEnv>()
 
@@ -32,6 +33,7 @@ app.route('/api/v1/time-entries', timeEntriesRouter)
 app.route('/api/v1/analytics', analyticsRouter)
 app.route('/api/v1/billing', billingRouter)
 app.route('/api/v1/users', usersRouter)
+app.route('/api/v1/achievements', achievementsRouter)
 
 app.notFound((c) => c.json({ error: 'Not found' }, 404))
 app.onError((err, c) => {

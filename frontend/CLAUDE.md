@@ -10,7 +10,7 @@ Kanban-доску реализуй как основной рабочий инт
 
 Карточка задачи должна поддерживать title, description, due date, priority, status, labels, checklist, tracked time, pomodoro sessions, assignees для командного режима и recurring settings для платного тарифа. Не сокращай модель задачи до минимального набора, если поле уже предусмотрено продуктом. Формы создания и редактирования задач должны быть валидируемыми и работать без перезагрузки страницы.
 
-Pomodoro-таймер реализуй как отдельную feature с локальным UI-состоянием и синхронизацией активной сессии с backend. Состояние таймера должно корректно переживать ре-рендеры, смену вкладок и обновление страницы, если активная сессия сохранена на сервере. Не завязывай источник истины только на local state. Отображай elapsed time, session status, start, pause, stop и completed session state.
+Pomodoro-таймер реализован как `features/pomodoro-fab` — FAB в правом нижнем углу (иконка-помидорка), по клику открывается popover с таймером + today stats + achievements. State живёт в `PomodoroProvider` (Context + useReducer), восстанавливается из `GET /time-entries/active` на mount. `PomodoroProvider` + `PomodoroFab` подключены в `AppShell`. Состояние таймера корректно переживает ре-рендеры, смену вкладок и обновление страницы.
 
 Calendar view должен отображать задачи по дедлайнам и поддерживать фильтрацию по board, workspace, priority, label и status. При переключении между kanban и calendar представлениями данные должны использовать единый источник состояния, а не отдельные несвязанные модели.
 

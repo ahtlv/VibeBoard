@@ -6,4 +6,35 @@
   body {
     @apply bg-gray-50 dark:bg-gray-950;
   }
+
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes legendary-shine {
+  0%   { transform: translateX(-100%); }
+  50%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Tomato idle: gentle float + occasional impatient wiggle
+   20s cycle: 2s animation, 11s pause, 2.4s wiggle, 4.6s rest */
+@keyframes tomato-idle {
+  0%   { transform: translateY(0)    scale(1)    rotate(0deg); }
+  5%   { transform: translateY(-4px) scale(1.06) rotate(0deg); }
+  10%  { transform: translateY(0)    scale(1)    rotate(0deg); }
+  /* long pause */
+  65%  { transform: translateY(0)    scale(1)    rotate(0deg); }
+  /* impatient wiggle */
+  69%  { transform: translateY(-2px) scale(1.04) rotate(-9deg); }
+  73%  { transform: translateY(-2px) scale(1.04) rotate(9deg); }
+  77%  { transform: translateY(-1px) scale(1.02) rotate(-5deg); }
+  81%  { transform: translateY(0)    scale(1)    rotate(0deg); }
+  /* rest */
+  100% { transform: translateY(0)    scale(1)    rotate(0deg); }
 }

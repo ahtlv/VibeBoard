@@ -1,0 +1,4 @@
+-- Schema dump before migration: add completed_at + submitted_at to tasks
+-- Date: 2026-05-01
+-- State: after nullable_task_id_in_time_entries
+-- tasks.completed_at and tasks.submitted_at do NOT yet exist

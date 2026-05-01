@@ -21,6 +21,8 @@ export interface TaskApiResponse {
   recurring_rule: Record<string, unknown> | null
   is_archived: boolean
   assignee_ids: string[]
+  completed_at: string | null
+  submitted_at: string | null
   checklist_items: Array<{
     id: string
     task_id: string
@@ -30,6 +32,7 @@ export interface TaskApiResponse {
   }>
   created_at: string
   updated_at: string
+  unlocked_achievements?: Array<{ icon: string; title: string; description: string }>
 }
 
 /** Конвертирует ответ backend (snake_case) в frontend Task (camelCase) */
@@ -51,6 +54,8 @@ export function mapTask(r: TaskApiResponse): Task {
     totalTrackedSeconds: r.tracked_time_total,
     pomodoroSessionsCount: r.pomodoro_sessions_count,
     recurring: null,
+    completedAt: r.completed_at ?? null,
+    submittedAt: r.submitted_at ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   }
@@ -122,4 +127,32 @@ export const tasksApi = {
       column_id: body.columnId,
       position: body.position,
     }),
+
+  /** POST /tasks/:id/submit-review — исполнитель сдаёт задачу на проверку */
+  submitForReview: (taskId: string): Promise<TaskApiResponse> =>
+    apiClient.post<TaskApiResponse>(`/tasks/${taskId}/submit-review`),
+
+  /** POST /tasks/:id/approve — админ принимает задачу */
+  approveTask: (taskId: string): Promise<TaskApiResponse> =>
+    apiClient.post<TaskApiResponse>(`/tasks/${taskId}/approve`),
+
+  /** POST /tasks/:id/reject — админ возвращает задачу исполнителю */
+  rejectTask: (taskId: string): Promise<TaskApiResponse> =>
+    apiClient.post<TaskApiResponse>(`/tasks/${taskId}/reject`),
+
+  /** GET /tasks/pending-review?workspace_id=X — задачи на проверке (только для админов) */
+  getPendingReview: (workspaceId: string): Promise<TaskApiResponse[]> =>
+    apiClient.get<TaskApiResponse[]>(`/tasks/pending-review?workspace_id=${workspaceId}`),
+
+  /** GET /tasks/completed?workspace_id=X — выполненные задачи для Календаря */
+  getCompleted: (workspaceId: string): Promise<TaskApiResponse[]> =>
+    apiClient.get<TaskApiResponse[]>(`/tasks/completed?workspace_id=${workspaceId}`),
+
+  /** GET /tasks/upcoming?workspace_id=X — активные задачи с дедлайном для Календаря */
+  getUpcoming: (workspaceId: string): Promise<TaskApiResponse[]> =>
+    apiClient.get<TaskApiResponse[]>(`/tasks/upcoming?workspace_id=${workspaceId}`),
+
+  /** GET /tasks/heatmap?workspace_id=X — данные тепловой карты */
+  getHeatmap: (workspaceId: string): Promise<{ date: string; count: number }[]> =>
+    apiClient.get<{ date: string; count: number }[]>(`/tasks/heatmap?workspace_id=${workspaceId}`),
 }

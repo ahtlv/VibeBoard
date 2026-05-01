@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ChangeEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Task } from '@/entities/task/types'
 import type { BoardMember } from '@/entities/board/types'
 import type { Priority } from '@/shared/types/task'
@@ -25,14 +26,10 @@ interface TaskModalProps {
   members: BoardMember[]
   onClose: () => void
   onSubmit: (values: TaskFormValues) => void
+  onDelete?: (taskId: string) => void
 }
 
-const PRIORITY_OPTIONS: { value: Priority; label: string }[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'urgent', label: 'Urgent' },
-]
+const PRIORITY_VALUES: Priority[] = ['low', 'medium', 'high', 'urgent']
 
 const PRIORITY_BADGE: Record<Priority, string> = {
   low: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
@@ -62,8 +59,9 @@ function formatTime(s: number): string {
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
-export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) {
+export function TaskModal({ mode, members, onClose, onSubmit, onDelete }: TaskModalProps) {
   const { user } = useAuth()
+  const { t } = useTranslation()
   const isPro = user?.plan === 'pro' || user?.plan === 'team'
   const isCreate = mode.kind === 'create'
   const task = mode.kind === 'edit' ? mode.task : null
@@ -76,6 +74,14 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
   const [bgColor, setBgColor] = useState<string | null>(task?.bgColor ?? null)
   const [assigneeIds, setAssigneeIds] = useState<string[]>(task?.assigneeIds ?? [])
   const [titleError, setTitleError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    if (!task || !onDelete) return
+    setDeleting(true)
+    onDelete(task.id)
+  }
 
   // Pomodoro state (edit mode only)
   const POMODORO_SECONDS = 25 * 60
@@ -127,12 +133,12 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
   function handleSubmit() {
     const trimmed = title.trim()
     if (!trimmed) {
-      setTitleError('Title is required')
+      setTitleError(t('task.titleRequired'))
       titleInputRef.current?.focus()
       return
     }
     if (trimmed.length > 200) {
-      setTitleError('Title must be 200 characters or less')
+      setTitleError(t('task.titleTooLong'))
       return
     }
     setTitleError('')
@@ -167,7 +173,7 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
       setTimerStatus('running')
       startCountdown()
     } catch {
-      setTimerError('Failed to start session')
+      setTimerError(t('task.startError'))
     } finally {
       setIsTimerLoading(false)
     }
@@ -191,7 +197,7 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
       await timeEntriesApi.stop()
       activeEntryIdRef.current = null
     } catch {
-      setTimerError('Failed to stop session')
+      setTimerError(t('task.stopError'))
     } finally {
       setIsTimerLoading(false)
       setTimerStatus('idle')
@@ -229,11 +235,11 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 px-6 py-4 shrink-0">
           <h2 id="task-modal-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
-            {isCreate ? 'New task' : 'Edit task'}
+            {isCreate ? t('task.newTask') : t('task.editTask')}
           </h2>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('task.cancel')}
             className="shrink-0 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors"
           >
             ✕
@@ -246,7 +252,7 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
           {/* Title */}
           <div>
             <label htmlFor="task-title" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-              Title <span className="text-red-500">*</span>
+              {t('task.title')} <span className="text-red-500">*</span>
             </label>
             <input
               ref={titleInputRef}
@@ -254,7 +260,7 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
               type="text"
               value={title}
               onChange={(e: ChangeEvent<HTMLInputElement>) => { setTitle(e.target.value); if (titleError) setTitleError('') }}
-              placeholder="Task title…"
+              placeholder={t('task.titlePlaceholder')}
               maxLength={200}
               className={[
                 'w-full rounded-md border bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:ring-1 transition-colors',
@@ -269,13 +275,13 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
           {/* Description */}
           <div>
             <label htmlFor="task-desc" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-              Description
+              {t('task.description')}
             </label>
             <textarea
               id="task-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add a description…"
+              placeholder={t('task.descriptionPlaceholder')}
               rows={3}
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none transition-colors"
             />
@@ -285,7 +291,7 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="task-priority" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                Priority
+                {t('task.priority')}
               </label>
               <select
                 id="task-priority"
@@ -293,18 +299,18 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
                 onChange={(e) => setPriority(e.target.value as Priority)}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
               >
-                {PRIORITY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                {PRIORITY_VALUES.map((val) => (
+                  <option key={val} value={val}>{t(`task.priority${val.charAt(0).toUpperCase()}${val.slice(1)}`)}</option>
                 ))}
               </select>
-              <span className={`mt-1.5 inline-block rounded px-2 py-0.5 text-xs font-medium capitalize ${PRIORITY_BADGE[priority]}`}>
-                {priority}
+              <span className={`mt-1.5 inline-block rounded px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[priority]}`}>
+                {t(`task.priority${priority.charAt(0).toUpperCase()}${priority.slice(1)}`)}
               </span>
             </div>
 
             <div>
               <label htmlFor="task-due" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                Due date
+                {t('task.dueDate')}
               </label>
               <input
                 id="task-due"
@@ -319,13 +325,13 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
           {/* Background color */}
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-              Card color
+              {t('task.cardColor')}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               {/* No color */}
               <button
                 type="button"
-                title="No color"
+                title={t('task.noColor')}
                 onClick={() => setBgColor(null)}
                 className={[
                   'h-6 w-6 rounded-full border-2 flex items-center justify-center bg-white dark:bg-gray-800 transition-all',
@@ -361,7 +367,7 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
           {members.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                Assignees
+                {t('task.assignees')}
               </p>
               <div className="flex flex-wrap gap-2">
                 {members.map((member) => {
@@ -402,7 +408,7 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
           {!isCreate && task && (
             <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-4 py-4">
               <p className="mb-3 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                Pomodoro
+                {t('task.pomodoro')}
               </p>
               <div className="flex items-center gap-4">
                 <div className="flex-1">
@@ -410,34 +416,34 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
                     {formatTime(secondsLeft)}
                   </p>
                   <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    {timerStatus === 'running' && 'Focus session'}
-                    {timerStatus === 'paused' && 'Paused (session active on server)'}
-                    {timerStatus === 'idle' && 'Ready'}
+                    {timerStatus === 'running' && t('task.focusSession')}
+                    {timerStatus === 'paused' && t('task.paused')}
+                    {timerStatus === 'idle' && t('task.ready')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {timerStatus === 'idle' && (
                     <button onClick={startTimer} disabled={isTimerLoading}
                       className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
-                      {isTimerLoading ? '…' : 'Start'}
+                      {isTimerLoading ? '…' : t('task.start')}
                     </button>
                   )}
                   {timerStatus === 'running' && (
                     <button onClick={pauseTimer}
                       className="rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-600 transition-colors">
-                      Pause
+                      {t('task.pause')}
                     </button>
                   )}
                   {timerStatus === 'paused' && (
                     <button onClick={resumeTimer}
                       className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors">
-                      Resume
+                      {t('task.resume')}
                     </button>
                   )}
                   {timerStatus !== 'idle' && (
                     <button onClick={stopTimer} disabled={isTimerLoading}
                       className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors">
-                      {isTimerLoading ? '…' : 'Stop'}
+                      {isTimerLoading ? '…' : t('task.stop')}
                     </button>
                   )}
                 </div>
@@ -485,15 +491,15 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
           {!isCreate && task && (
             <div>
               <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                Recurring
+                {t('task.recurring')}
               </p>
               {isPro ? (
-                <p className="text-sm text-gray-400 dark:text-gray-500">Recurring rules — coming soon</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500">{t('task.recurringComingSoon')}</p>
               ) : (
                 <PremiumGate
                   feature="Recurring tasks"
                   description="Automatically repeat this task daily, weekly, or on a custom schedule."
-                  ctaLabel="Unlock with Pro"
+                  ctaLabel={t('task.recurringUnlock')}
                 />
               )}
             </div>
@@ -503,7 +509,7 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
           {!isCreate && task && task.labels.length > 0 && (
             <div>
               <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                Labels
+                {t('task.labels')}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {task.labels.map((label) => (
@@ -518,19 +524,56 @@ export function TaskModal({ mode, members, onClose, onSubmit }: TaskModalProps) 
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 border-t border-gray-100 dark:border-gray-800 px-6 py-4 shrink-0">
-          <button
-            onClick={onClose}
-            className="rounded-md border border-gray-300 dark:border-gray-700 px-4 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
-          >
-            {isCreate ? 'Create task' : 'Save'}
-          </button>
+        <div className="border-t border-gray-100 dark:border-gray-800 px-6 py-4 shrink-0">
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onClose}
+              disabled={deleting}
+              className="rounded-md border border-gray-300 dark:border-gray-700 px-4 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+            >
+              {t('task.cancel')}
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={deleting}
+              className="rounded-md bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            >
+              {isCreate ? t('task.create') : t('task.save')}
+            </button>
+          </div>
+
+          {!isCreate && onDelete && (
+            <div className="mt-3 border-t border-gray-100 dark:border-gray-800 pt-3">
+              {confirmDelete ? (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('task.deleteWarning')}</p>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      disabled={deleting}
+                      className="rounded-md border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    >
+                      {t('task.cancel')}
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {deleting ? t('task.deleting') : t('task.deleteConfirm')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="w-full rounded-md border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-4 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/60 transition-colors"
+                >
+                  {t('task.delete')}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

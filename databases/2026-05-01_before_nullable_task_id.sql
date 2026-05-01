@@ -1,0 +1,4 @@
+-- Schema dump before migration: make time_entries.task_id nullable (quick-start without task)
+-- Date: 2026-05-01
+-- State: after add_achievements migration
+-- time_entries.task_id is currently NOT NULL — changing to NULLABLE for quick-start Pomodoro

@@ -1,4 +1,5 @@
 import { useState, type DragEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Column } from '@/entities/board/types'
 import type { BoardMember } from '@/entities/board/types'
 import type { Task } from '@/entities/task/types'
@@ -14,6 +15,11 @@ interface KanbanColumnProps {
   onUpdateColumn: (columnId: string, patch: { title?: string; color?: string | null }) => void
   onDeleteColumn: (columnId: string) => void
   canEdit?: boolean
+  currentUserId?: string
+  isAdmin?: boolean
+  onSubmitReview?: (taskId: string) => void
+  onApprove?: (taskId: string) => void
+  onReject?: (taskId: string) => void
 }
 
 export function KanbanColumn({
@@ -25,7 +31,13 @@ export function KanbanColumn({
   onUpdateColumn,
   onDeleteColumn,
   canEdit = false,
+  currentUserId,
+  isAdmin,
+  onSubmitReview,
+  onApprove,
+  onReject,
 }: KanbanColumnProps) {
+  const { t } = useTranslation()
   const [isDragOver, setIsDragOver] = useState(false)
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -154,7 +166,7 @@ export function KanbanColumn({
                     : 'border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600',
                 ].join(' ')}
               >
-                {isDragOver ? 'Drop here' : 'No tasks yet'}
+                {isDragOver ? t('column.dropHere') : t('column.noTasks')}
               </div>
             </>
           ) : (
@@ -173,6 +185,11 @@ export function KanbanColumn({
                     members={members}
                     onClick={() => onTaskClick(task)}
                     onDragStart={(e) => handleDragStart(e, task.id)}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                    onSubmitReview={onSubmitReview}
+                    onApprove={onApprove}
+                    onReject={onReject}
                   />
                   {/* Drop zone after each card */}
                   <DropZone

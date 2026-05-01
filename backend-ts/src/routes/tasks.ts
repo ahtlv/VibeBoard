@@ -4,6 +4,7 @@ import type { AppEnv } from '../types'
 import { authMiddleware } from '../middleware/auth'
 import { getSupabase } from '../lib/supabase'
 import { getBoardWorkspace, checkMembership } from '../lib/access'
+import { achievementsService } from '../services/achievementsService'
 
 export const tasksRouter = new Hono<AppEnv>()
 
@@ -127,9 +128,15 @@ tasksRouter.patch('/:id', async (c) => {
 
   const { assignee_ids, ...taskFields } = parsed.data
 
+  const now = new Date().toISOString()
+  const completedAtPatch =
+    taskFields.status === 'done' ? { completed_at: now }
+    : taskFields.status !== undefined ? { completed_at: null }
+    : {}
+
   const { data, error } = await supabase
     .from('tasks')
-    .update({ ...taskFields, updated_at: new Date().toISOString() })
+    .update({ ...taskFields, ...completedAtPatch, updated_at: now })
     .eq('id', taskId)
     .select()
     .single()
@@ -144,7 +151,11 @@ tasksRouter.patch('/:id', async (c) => {
     ? assignee_ids
     : await getAssigneeIds(supabase, taskId)
 
-  return c.json({ ...data, assignee_ids: finalAssigneeIds })
+  const unlocked_achievements = parsed.data.status === 'done'
+    ? await achievementsService.evaluateAndUnlock(supabase, userId)
+    : []
+
+  return c.json({ ...data, assignee_ids: finalAssigneeIds, unlocked_achievements })
 })
 
 // ── DELETE /api/v1/tasks/:id ──────────────────────────────────────────────────
@@ -206,4 +217,295 @@ tasksRouter.patch('/:id/move', async (c) => {
   const assigneeIds = await getAssigneeIds(supabase, taskId)
 
   return c.json({ ...data, assignee_ids: assigneeIds })
+})
+
+// ── POST /api/v1/tasks/:id/submit-review ─────────────────────────────────────
+// Any member/assignee/creator can submit a task for review
+
+tasksRouter.post('/:id/submit-review', async (c) => {
+  const userId = c.get('userId')
+  const taskId = c.req.param('id')
+  const supabase = getSupabase(c.env)
+
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('board_id, status, created_by')
+    .eq('id', taskId)
+    .single()
+  if (!task) return c.json({ error: 'Task not found' }, 404)
+
+  const workspaceId = await getBoardWorkspace(supabase, task.board_id)
+  if (!workspaceId || !await checkMembership(supabase, workspaceId, userId)) {
+    return c.json({ error: 'Not a member of this workspace' }, 403)
+  }
+  if (task.status === 'done' || task.status === 'in_review') {
+    return c.json({ error: 'Task cannot be submitted in current status' }, 422)
+  }
+
+  const now = new Date().toISOString()
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({ status: 'in_review', submitted_at: now, updated_at: now })
+    .eq('id', taskId)
+    .select()
+    .single()
+
+  if (error || !data) return c.json({ error: error?.message ?? 'Failed to submit task' }, 500)
+  const assignee_ids = await getAssigneeIds(supabase, taskId)
+  return c.json({ ...data, assignee_ids })
+})
+
+// ── POST /api/v1/tasks/:id/approve ───────────────────────────────────────────
+// Admin/owner only: accept task → status='done', completed_at=now()
+
+tasksRouter.post('/:id/approve', async (c) => {
+  const userId = c.get('userId')
+  const taskId = c.req.param('id')
+  const supabase = getSupabase(c.env)
+
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('board_id, status')
+    .eq('id', taskId)
+    .single()
+  if (!task) return c.json({ error: 'Task not found' }, 404)
+
+  const workspaceId = await getBoardWorkspace(supabase, task.board_id)
+  const membership = workspaceId ? await checkMembership(supabase, workspaceId, userId) : null
+  if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    return c.json({ error: 'Only admins can approve tasks' }, 403)
+  }
+
+  const now = new Date().toISOString()
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({ status: 'done', completed_at: now, updated_at: now })
+    .eq('id', taskId)
+    .select()
+    .single()
+
+  if (error || !data) return c.json({ error: error?.message ?? 'Failed to approve task' }, 500)
+
+  const assignee_ids = await getAssigneeIds(supabase, taskId)
+  const unlocked_achievements = await achievementsService.evaluateAndUnlock(supabase, userId)
+  return c.json({ ...data, assignee_ids, unlocked_achievements })
+})
+
+// ── POST /api/v1/tasks/:id/reject ────────────────────────────────────────────
+// Admin/owner only: send task back to in_progress
+
+tasksRouter.post('/:id/reject', async (c) => {
+  const userId = c.get('userId')
+  const taskId = c.req.param('id')
+  const supabase = getSupabase(c.env)
+
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('board_id')
+    .eq('id', taskId)
+    .single()
+  if (!task) return c.json({ error: 'Task not found' }, 404)
+
+  const workspaceId = await getBoardWorkspace(supabase, task.board_id)
+  const membership = workspaceId ? await checkMembership(supabase, workspaceId, userId) : null
+  if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    return c.json({ error: 'Only admins can reject tasks' }, 403)
+  }
+
+  const now = new Date().toISOString()
+  const { data, error } = await supabase
+    .from('tasks')
+    .update({ status: 'in_progress', submitted_at: null, updated_at: now })
+    .eq('id', taskId)
+    .select()
+    .single()
+
+  if (error || !data) return c.json({ error: error?.message ?? 'Failed to reject task' }, 500)
+  const assignee_ids = await getAssigneeIds(supabase, taskId)
+  return c.json({ ...data, assignee_ids })
+})
+
+// ── GET /api/v1/tasks/heatmap?workspace_id=X ─────────────────────────────────
+// Returns daily task-completion counts for the last 365 days.
+// Members see only their own tasks; admins see all workspace tasks.
+
+tasksRouter.get('/heatmap', async (c) => {
+  const userId = c.get('userId')
+  const workspaceId = c.req.query('workspace_id')
+  if (!workspaceId) return c.json({ error: 'workspace_id required' }, 400)
+
+  const supabase = getSupabase(c.env)
+  const membership = await checkMembership(supabase, workspaceId, userId)
+  if (!membership) return c.json({ error: 'Not a member of this workspace' }, 403)
+
+  const { data: boards } = await supabase
+    .from('boards').select('id').eq('workspace_id', workspaceId).eq('is_archived', false)
+  const boardIds = (boards ?? []).map((b) => b.id)
+  if (boardIds.length === 0) return c.json([])
+
+  const since = new Date()
+  since.setFullYear(since.getFullYear() - 1)
+
+  const sinceISO = since.toISOString()
+
+  // Members see only tasks they created or were assigned to
+  if (!['owner', 'admin'].includes(membership.role)) {
+    const { data: assignedTasks } = await supabase
+      .from('task_assignees').select('task_id').eq('user_id', userId)
+    const assignedIds = (assignedTasks ?? []).map((r) => r.task_id)
+
+    const baseQuery = () => supabase
+      .from('tasks')
+      .select('completed_at')
+      .eq('status', 'done')
+      .in('board_id', boardIds)
+      .gte('completed_at', sinceISO)
+
+    const [{ data: createdTasks }, { data: assignedTaskData }] = await Promise.all([
+      baseQuery().eq('created_by', userId),
+      assignedIds.length > 0
+        ? baseQuery().in('id', assignedIds)
+        : Promise.resolve({ data: [] as Array<{ completed_at: string | null }> }),
+    ])
+
+    const allDates = [
+      ...(createdTasks ?? []),
+      ...(assignedTaskData ?? []),
+    ].map((t) => t.completed_at!.slice(0, 10))
+
+    const counts = allDates.reduce<Record<string, number>>((acc, d) => {
+      acc[d] = (acc[d] ?? 0) + 1; return acc
+    }, {})
+    return c.json(Object.entries(counts).map(([date, count]) => ({ date, count })))
+  }
+
+  // Admins/owners see all workspace tasks
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('completed_at')
+    .eq('status', 'done')
+    .in('board_id', boardIds)
+    .gte('completed_at', sinceISO)
+
+  const counts = (tasks ?? []).reduce<Record<string, number>>((acc, t) => {
+    if (!t.completed_at) return acc
+    const d = t.completed_at.slice(0, 10)
+    acc[d] = (acc[d] ?? 0) + 1; return acc
+  }, {})
+  return c.json(Object.entries(counts).map(([date, count]) => ({ date, count })))
+})
+
+// ── GET /api/v1/tasks/upcoming?workspace_id=X ────────────────────────────────
+// Active tasks with due_date for Calendar view
+
+tasksRouter.get('/upcoming', async (c) => {
+  const userId = c.get('userId')
+  const workspaceId = c.req.query('workspace_id')
+  if (!workspaceId) return c.json({ error: 'workspace_id required' }, 400)
+
+  const supabase = getSupabase(c.env)
+  if (!await checkMembership(supabase, workspaceId, userId)) {
+    return c.json({ error: 'Not a member of this workspace' }, 403)
+  }
+
+  const { data: boards } = await supabase
+    .from('boards').select('id').eq('workspace_id', workspaceId).eq('is_archived', false)
+
+  const boardIds = (boards ?? []).map((b) => b.id)
+  if (boardIds.length === 0) return c.json([])
+
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('*, task_assignees(user_id)')
+    .in('board_id', boardIds)
+    .not('status', 'eq', 'done')
+    .not('due_date', 'is', null)
+    .order('due_date', { ascending: true })
+
+  const result = (tasks ?? []).map((t) => ({
+    ...t,
+    assignee_ids: (t.task_assignees ?? []).map((a: { user_id: string }) => a.user_id),
+    task_assignees: undefined,
+  }))
+
+  return c.json(result)
+})
+
+// ── GET /api/v1/tasks/completed?workspace_id=X ───────────────────────────────
+// Returns done tasks for Calendar view (all workspace members can see)
+
+tasksRouter.get('/completed', async (c) => {
+  const userId = c.get('userId')
+  const workspaceId = c.req.query('workspace_id')
+  if (!workspaceId) return c.json({ error: 'workspace_id required' }, 400)
+
+  const supabase = getSupabase(c.env)
+  if (!await checkMembership(supabase, workspaceId, userId)) {
+    return c.json({ error: 'Not a member of this workspace' }, 403)
+  }
+
+  const { data: boards } = await supabase
+    .from('boards')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('is_archived', false)
+
+  const boardIds = (boards ?? []).map((b) => b.id)
+  if (boardIds.length === 0) return c.json([])
+
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('*, task_assignees(user_id)')
+    .eq('status', 'done')
+    .in('board_id', boardIds)
+    .not('completed_at', 'is', null)
+    .order('completed_at', { ascending: false })
+    .limit(200)
+
+  const result = (tasks ?? []).map((t) => ({
+    ...t,
+    assignee_ids: (t.task_assignees ?? []).map((a: { user_id: string }) => a.user_id),
+    task_assignees: undefined,
+  }))
+
+  return c.json(result)
+})
+
+// ── GET /api/v1/tasks/pending-review?workspace_id=X ──────────────────────────
+// Admin/owner only: list all in_review tasks in workspace
+
+tasksRouter.get('/pending-review', async (c) => {
+  const userId = c.get('userId')
+  const workspaceId = c.req.query('workspace_id')
+  if (!workspaceId) return c.json({ error: 'workspace_id required' }, 400)
+
+  const supabase = getSupabase(c.env)
+  const membership = await checkMembership(supabase, workspaceId, userId)
+  if (!membership || !['owner', 'admin'].includes(membership.role)) {
+    return c.json({ error: 'Only admins can view pending reviews' }, 403)
+  }
+
+  const { data: boards } = await supabase
+    .from('boards')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('is_archived', false)
+
+  const boardIds = (boards ?? []).map((b) => b.id)
+  if (boardIds.length === 0) return c.json([])
+
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('*, task_assignees(user_id)')
+    .eq('status', 'in_review')
+    .in('board_id', boardIds)
+    .order('submitted_at', { ascending: true })
+
+  const result = (tasks ?? []).map((t) => ({
+    ...t,
+    assignee_ids: (t.task_assignees ?? []).map((a: { user_id: string }) => a.user_id),
+    task_assignees: undefined,
+  }))
+
+  return c.json(result)
 })

@@ -18,12 +18,17 @@ src/
 ├── server.ts         # local dev entrypoint (node-server обёртка)
 ├── types.ts          # AppEnv (Bindings + Variables), DbUser
 ├── routes/           # один файл = один ресурс (auth, boards, columns, tasks, ...)
+├── services/         # бизнес-логика (timeEntriesService, achievementsService)
 ├── middleware/
 │   └── auth.ts       # authMiddleware: проверка JWT через JWKS, пишет userId/user в context
 └── lib/
     ├── supabase.ts   # getSupabase(env) — инициализация клиента
     └── access.ts     # хелперы проверки доступа к ресурсам
 ```
+
+**Сервисный слой** (`src/services/`) — вся нетривиальная бизнес-логика вынесена из роутов:
+- `timeEntriesService` — getActive, pause, resume, stop с корректным подсчётом `accumulated_seconds`.
+- `achievementsService` — evaluateAndUnlock (триггерится из `/stop` и `PATCH /tasks/:id` при `status=done`), list с прогрессом.
 
 ## Правила написания кода
 
